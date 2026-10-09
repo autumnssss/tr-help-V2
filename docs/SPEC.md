@@ -31,7 +31,9 @@ The app knows each menu item's components and portions, each recipe's finished y
 | By-the-pound items | Quantity = lb of finished product | — |
 | Size variations ("6 OZ", "24 ounces") | That many oz of finished product | — |
 
-Exceptions are set per menu item. Current known exception: **ribs**, sold as 4 / 6 / 8 oz, family = 1 full rack + sides.
+Exceptions are set per menu item. Current known exception: **ribs**, sold as 4 / 6 / 8 oz (blank option = 4 oz), family = 1 full rack + sides.
+
+**Smoked Mac & Cheese with Broccoli** follows the casserole rule: regular = 8 oz mac + 4 oz broccoli. Its Hotplate "6 OZ" option is mislabeled: it means **+2 oz mac** (10 oz mac + 4 oz broccoli). Soup regular = 16 oz.
 
 ### Yield and buying
 
@@ -57,7 +59,7 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 ### Labels
 
 - Labels stay designed and printed in Munbyn. The app only outputs counts.
-- Regular = 1 label, family = 3 labels, Garden plate = 1 label. Trial rule, adjustable.
+- **Label count = number of plates** in the order (cups and condiment cups get no label). Regular = 1. Family = 3 for most meals, 2 for family ribs (2× 24 oz flat) and family chicken veggie pasta (2× 24 oz long).
 
 ### Prep sheet
 
@@ -177,7 +179,5 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 
 - **Ribs:** average finished weight per rack (chef has the count).
 - **Spaghetti & Meatballs:** container and count for regular and family.
-- **Labels vs plates:** family chicken pasta = 2 plates, family ribs = 2 plates, other family meals = 3 plates. Is the label count = number of plates?
-- **Mac & Cheese "6 OZ":** 6 oz of mac only, or the whole plate?
 - **Meal type per current menu item** (standard vs casserole), e.g. Chicken Veggie Pasta, Smoked Mac & Cheese w/ Broccoli. Set during first catalog setup.
 - **Kitchen-measured yields** to override USDA defaults: brisket 50%, pork butt 45% known; others as measured.
