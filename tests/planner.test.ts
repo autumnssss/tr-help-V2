@@ -159,6 +159,28 @@ describe('plan: unknowns are flagged, never silently dropped', () => {
     ]);
   });
 
+  it('flags recipe lines with no linked ingredient or no weight yet (V1 imports)', () => {
+    const catalog: Catalog = {
+      ...base,
+      recipes: [
+        ...base.recipes.filter(r => r.id !== 'brisket'),
+        {
+          id: 'brisket', name: 'brisket', method: 'smoke', lines: [
+            { ingredientId: 'brisket', oz: 16 },
+            { ingredientId: null, name: 'beef rub', oz: 1 },
+            { ingredientId: 'cheddar', name: 'cheddar', oz: null },
+          ],
+        },
+      ],
+    };
+    const p = plan([order('Smoked Beef by the pound', 1)], catalog);
+    expect(p.unresolved).toEqual([
+      { kind: 'ingredient', recipeId: 'brisket', ingredient: 'beef rub' },
+      { kind: 'weight', recipeId: 'brisket', ingredient: 'cheddar' },
+    ]);
+    expect(lb(p, 'brisket')).toBeUndefined(); // no partial buy from a half-known recipe
+  });
+
   it('runs the real prep list and reports every item it does not know yet', () => {
     const csv = readFileSync(new URL('./fixtures/hotplate-prep-list-2026-10-08.csv', import.meta.url), 'utf8');
     const p = plan(parseHotplateCsv(csv), base);

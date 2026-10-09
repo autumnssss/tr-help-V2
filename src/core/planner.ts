@@ -4,7 +4,9 @@
 import { normalizeName, parseSidePicks, type OrderLine } from './hotplate';
 
 export type CookingMethod =
-  | 'smoke' | 'braise' | 'boil' | 'grill' | 'roast' | 'saute' | 'bake' | 'no-cook';
+  | 'smoke' | 'braise' | 'boil' | 'grill' | 'roast' | 'saute' | 'bake' | 'no-cook'
+  /** Not set yet (e.g. imported from V1). Shows as its own prep-sheet group. */
+  | 'unassigned';
 
 export type Ingredient = {
   id: string;
@@ -22,8 +24,11 @@ export type Recipe = {
   id: string;
   name: string;
   method: CookingMethod;
-  /** As-purchased weight of each ingredient for one batch. */
-  lines: { ingredientId: string; oz: number }[];
+  /**
+   * As-purchased weight of each ingredient for one batch. `name` is what the recipe says.
+   * Null ingredientId = not linked to the library yet; null oz = amount not convertible to weight yet.
+   */
+  lines: { ingredientId: string | null; name?: string; oz: number | null }[];
   /** Measured finished batch weight. Absent = estimated from ingredient yields. */
   finishedOz?: number;
 };
@@ -65,7 +70,10 @@ export type Unresolved =
   | { kind: 'size'; title: string; variation: string }
   | { kind: 'side'; title: string; side: string }
   | { kind: 'recipe'; recipeId: string }
-  | { kind: 'ingredient'; recipeId: string; ingredientId: string };
+  /** Line not linked to a library ingredient (or linked to one that's gone). */
+  | { kind: 'ingredient'; recipeId: string; ingredient: string }
+  /** Line amount has no weight yet, e.g. cups of an ingredient with no grams-per-cup. */
+  | { kind: 'weight'; recipeId: string; ingredient: string };
 
 export type ShoppingLine = {
   ingredientId: string;
@@ -105,7 +113,10 @@ export function casseroleMeal(entree: string, veg: string) {
 
 export function finishedBatchOz(recipe: Recipe, ingredients: Map<string, Ingredient>): number {
   if (recipe.finishedOz) return recipe.finishedOz;
-  return recipe.lines.reduce((sum, l) => sum + l.oz * (ingredients.get(l.ingredientId)?.yield ?? 0), 0);
+  return recipe.lines.reduce(
+    (sum, l) => sum + (l.oz ?? 0) * ((l.ingredientId && ingredients.get(l.ingredientId)?.yield) || 0),
+    0,
+  );
 }
 
 function sizeKey(variation: string, sizes: Record<string, Size>): string | undefined {
@@ -169,17 +180,20 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
   for (const [recipeId, needOz] of shopOz) {
     const recipe = recipes.get(recipeId);
     if (!recipe) { flag({ kind: 'recipe', recipeId }); continue; }
-    const bad = recipe.lines.filter(l => !ingredients.has(l.ingredientId));
-    if (bad.length) {
-      bad.forEach(l => flag({ kind: 'ingredient', recipeId, ingredientId: l.ingredientId }));
-      continue;
+    let ok = true;
+    for (const l of recipe.lines) {
+      const ing = l.ingredientId ? ingredients.get(l.ingredientId) : undefined;
+      const label = ing?.name ?? l.name ?? l.ingredientId ?? '?';
+      if (!ing) { flag({ kind: 'ingredient', recipeId, ingredient: label }); ok = false; }
+      else if (l.oz === null) { flag({ kind: 'weight', recipeId, ingredient: label }); ok = false; }
     }
+    if (!ok) continue;
     const batch = finishedBatchOz(recipe, ingredients);
     if (batch <= 0) { flag({ kind: 'recipe', recipeId }); continue; }
     const multiplier = needOz / batch;
     for (const l of recipe.lines) {
-      const ing = ingredients.get(l.ingredientId)!;
-      add(buyOz, ing.id, l.oz * multiplier * (1 + (ing.buffer ?? 0)));
+      const ing = ingredients.get(l.ingredientId!)!;
+      add(buyOz, ing.id, l.oz! * multiplier * (1 + (ing.buffer ?? 0)));
     }
   }
 
