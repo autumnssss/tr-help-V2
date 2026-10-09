@@ -30,6 +30,25 @@ export function Upload({ catalog }: { catalog: Catalog }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [done, setDone] = useState<Set<string>>(new Set());
+
+  // Ticks on the prep sheet survive a refresh on this device, per uploaded file.
+  const doneKey = (fileName: string) => `prep-done:${fileName}`;
+  const loadDone = (fileName: string) => {
+    try { return new Set<string>(JSON.parse(localStorage.getItem(doneKey(fileName)) ?? '[]')); } catch { return new Set<string>(); }
+  };
+  const toggle = (id: string) => {
+    if (!loaded) return;
+    const next = new Set(done);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setDone(next);
+    try { localStorage.setItem(doneKey(loaded.fileName), JSON.stringify([...next])); } catch { /* private mode */ }
+  };
+  const box = (id: string, label: string) => (
+    <input type="checkbox" aria-label={`Done: ${label}`} checked={done.has(id)} onChange={() => toggle(id)} />
+  );
+  const check = (id: string, label: string, inline = false) =>
+    inline ? box(id, label) : <td className="check">{box(id, label)}</td>;
 
   async function read(file: File | undefined) {
     if (!file) return;
@@ -38,6 +57,7 @@ export function Upload({ catalog }: { catalog: Catalog }) {
       const orders = parseHotplateCsv(await file.text());
       if (!orders.length) throw new Error('That file has no order lines.');
       setLoaded({ fileName: file.name, orders, result: plan(orders, catalog) });
+      setDone(loadDone(file.name));
     } catch (e) {
       setLoaded(null);
       setError(e instanceof Error ? e.message : String(e));
@@ -140,12 +160,19 @@ export function Upload({ catalog }: { catalog: Catalog }) {
                 <table>
                   <tbody>
                     {g.items.flatMap(i => [
-                      <tr key={i.recipeId}><td>{i.name}</td><td className="num">{i.finishedLb.toFixed(2)} lb</td></tr>,
-                      ...(i.usedIn ?? []).map(u => (
-                        <tr key={`${i.recipeId}>${u.name}`} className="used-in">
-                          <td>{u.name}</td><td className="num">{u.lb.toFixed(2)} lb</td>
-                        </tr>
-                      )),
+                      <tr key={i.recipeId} className={done.has(i.recipeId) ? 'done' : ''}>
+                        {check(i.recipeId, i.name)}
+                        <td>{i.name}</td><td className="num">{i.finishedLb.toFixed(2)} lb</td>
+                      </tr>,
+                      ...(i.usedIn ?? []).map(u => {
+                        const id = `${i.recipeId}>${u.recipeId ?? 'plated'}`;
+                        return (
+                          <tr key={id} className={`used-in${done.has(id) ? ' done' : ''}`}>
+                            <td className="check" />
+                            <td><span className="nest">{check(id, `${i.name} for ${u.name}`, true)}{u.name}</span></td><td className="num">{u.lb.toFixed(2)} lb</td>
+                          </tr>
+                        );
+                      }),
                     ])}
                   </tbody>
                 </table>

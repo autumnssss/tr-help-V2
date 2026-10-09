@@ -47,4 +47,12 @@ th { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-s
   .card { border: 0; padding: 0; break-inside: avoid; }
 }
 .used-in td { padding-top: 3px; padding-bottom: 3px; color: var(--muted); font-size: 0.9rem; }
-.used-in td:first-child { padding-left: 24px; }
+
+td.check { width: 36px; padding-right: 0; white-space: nowrap; }
+td.check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+.nest { display: inline-flex; align-items: center; gap: 8px; }
+.nest input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+tr.done td:not(.check) { text-decoration: line-through; color: var(--muted); }
+@media print { tr.done td:not(.check) { text-decoration: none; color: inherit; } }
+tr.done .nest { text-decoration: line-through; }
+@media print { tr.done .nest { text-decoration: none; } }

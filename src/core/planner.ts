@@ -94,8 +94,11 @@ export type PrepLine = {
   recipeId: string;
   name: string;
   finishedLb: number;
-  /** For base recipes used inside other recipes: where the total goes, e.g. Potato Salad 5 lb, Mashed Potatoes 7 lb. */
-  usedIn?: { name: string; lb: number }[];
+  /**
+   * For base recipes used inside other recipes: where the total goes, e.g. Potato Salad 5 lb,
+   * Mashed Potatoes 7 lb (weight of the base going into each). recipeId absent = plated as is.
+   */
+  usedIn?: { recipeId?: string; name: string; lb: number }[];
 };
 
 /** Per-component totals for everything sold: portion counts → finished weight → what to buy. */
@@ -310,17 +313,25 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     })
     .sort(byName);
 
+  // A dish made from a base recipe at the same station (Mashed Potatoes from Boiled Potatoes, both
+  // boil) shows only nested under the base, so the station sees one pot, not two lines.
+  const nested = new Set<string>();
+  for (const [subId, parents] of prep.usedIn) {
+    const station = recipes.get(subId)?.method;
+    for (const parentId of parents.keys()) if (recipes.get(parentId)?.method === station) nested.add(parentId);
+  }
+
   const methods = new Map<CookingMethod, PrepLine[]>();
   for (const [recipeId, oz] of prep.total) {
     const recipe = recipes.get(recipeId);
-    if (!recipe || oz <= 0) continue;
+    if (!recipe || oz <= 0 || nested.has(recipeId)) continue;
     const list = methods.get(recipe.method) ?? [];
     const line: PrepLine = { recipeId, name: recipe.name, finishedLb: round2(oz / 16) };
     const parents = prep.usedIn.get(recipeId);
     if (parents) {
       const plated = prepOz.get(recipeId) ?? 0;
       line.usedIn = [
-        ...[...parents].map(([id, pOz]) => ({ name: recipes.get(id)?.name ?? id, lb: round2(pOz / 16) })),
+        ...[...parents].map(([id, pOz]) => ({ recipeId: id, name: recipes.get(id)?.name ?? id, lb: round2(pOz / 16) })),
         ...(plated > 0 ? [{ name: 'Plated as is', lb: round2(plated / 16) }] : []),
       ].sort((a, b) => a.name.localeCompare(b.name));
     }

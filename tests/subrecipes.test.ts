@@ -16,8 +16,8 @@ const catalog: Catalog = {
   ],
   recipes: [
     { id: 'boiled', name: 'Boiled Potatoes', method: 'boil', lines: [{ ingredientId: 'potatoes', oz: 40 }] }, // 32 oz finished
-    { id: 'salad', name: 'Potato Salad', method: 'no-cook', lines: [{ ingredientId: null, recipeId: 'boiled', oz: 32 }, { ingredientId: 'mayo', oz: 8 }] }, // 40 oz
-    { id: 'mash', name: 'Mashed Potatoes', method: 'no-cook', lines: [{ ingredientId: null, recipeId: 'boiled', oz: 32 }, { ingredientId: 'butter', oz: 4 }] }, // 36 oz
+    { id: 'salad', name: 'Potato Salad', method: 'boil', lines: [{ ingredientId: null, recipeId: 'boiled', oz: 32 }, { ingredientId: 'mayo', oz: 8 }] }, // 40 oz
+    { id: 'mash', name: 'Mashed Potatoes', method: 'bake', lines: [{ ingredientId: null, recipeId: 'boiled', oz: 32 }, { ingredientId: 'butter', oz: 4 }] }, // 36 oz
   ],
   menu: [one('Ribs', 'salad', 4), one('Meatloaf', 'mash', 9), one('Boiled potato side', 'boiled', 4)],
   sides: {},
@@ -31,8 +31,10 @@ describe('recipes inside recipes', () => {
     const boil = p.prepSheet.find(g => g.method === 'boil')!;
     expect(boil.items).toEqual([{
       recipeId: 'boiled', name: 'Boiled Potatoes', finishedLb: 12,
-      usedIn: [{ name: 'Mashed Potatoes', lb: 7 }, { name: 'Potato Salad', lb: 5 }],
-    }]);
+      usedIn: [{ recipeId: 'mash', name: 'Mashed Potatoes', lb: 7 }, { recipeId: 'salad', name: 'Potato Salad', lb: 5 }],
+    }]); // Potato Salad (same station) is only nested, not listed twice
+    // A dish at a different station still gets its own line there.
+    expect(p.prepSheet.find(g => g.method === 'bake')!.items.map(i => i.name)).toEqual(['Mashed Potatoes']);
     expect(p.unresolved).toEqual([]);
   });
 
@@ -46,7 +48,7 @@ describe('recipes inside recipes', () => {
   it('shows plated-as-is next to the recipes that use it', () => {
     const q = plan([order('Ribs', 25), order('Boiled potato side', 8)], catalog);
     expect(q.prepSheet.find(g => g.method === 'boil')!.items[0]!.usedIn).toEqual([
-      { name: 'Plated as is', lb: 2 }, { name: 'Potato Salad', lb: 5 },
+      { name: 'Plated as is', lb: 2 }, { recipeId: 'salad', name: 'Potato Salad', lb: 5 },
     ]);
   });
 
