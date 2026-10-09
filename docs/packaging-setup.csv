@@ -1,24 +1,28 @@
 Menu Item,Size,What goes in it,Container,Qty per order,Actual fill (oz),Notes
-Ribs with Corn Niblets & Potato Salad,Regular,Ribs + corn,24 oz long plate,1,,Which rib size is a blank-option order: 4/6/8 oz?
-Ribs with Corn Niblets & Potato Salad,Regular,Potato salad,4 oz styro cup,1,3.5,
-Ribs with Corn Niblets & Potato Salad,Regular,BBQ sauce,2 oz condiment cup,1,,Actual fill?
+Ribs with Corn Niblets & Potato Salad,Regular (4 oz),Ribs + corn,24 oz long plate,1,,Blank option = 4 oz ribs
+Ribs with Corn Niblets & Potato Salad,Regular (4 oz),Potato salad,4 oz styro cup,1,3.75,
+Ribs with Corn Niblets & Potato Salad,Regular (4 oz),BBQ sauce,2 oz condiment cup,1,1.5,
 Ribs with Corn Niblets & Potato Salad,Family - Full Rack + sides,Ribs + sides,24 oz flat plate,2,,
-Ribs with Corn Niblets & Potato Salad,Family - Full Rack + sides,Wrap,Plastic wrap,1,,
+Ribs with Corn Niblets & Potato Salad,Family - Full Rack + sides,Wrap,Plastic wrap,1,,$0.02 per order (cost only)
 Ribs with Corn Niblets & Potato Salad,Family - Full Rack + sides,BBQ sauce,4 oz styro cup,1,3.5,
-Any salad,Regular,Salad,Clamshell - hamburger size,1,,
-Any salad,Regular,Ranch,2 oz condiment cup,1,,Actual fill?
-Any salad,Family,Salad,Clamshell - plate size,1,,
-Any salad,Family,Ranch,2 oz condiment cup,2,,Actual fill?
-Chicken veggie pasta,Regular,,,,,
-Chicken veggie pasta,Family,,,3,,Which plate?
-Mississippi Pork Roast,Regular,,,,,
-Mississippi Pork Roast,Family,,,3,,Which plate?
-Shrimp & Grits with Brussels sprouts,Regular,,,,,
-Shrimp & Grits with Brussels sprouts,Family,,,3,,Which plate?
-Smoked Mac & Cheese with Broccoli,Regular,,,,,
-Smoked Mac & Cheese with Broccoli,6 OZ,,,,,
-Broccoli Cheddar Soup,Regular,,,,,How many oz is a regular soup?
-Broccoli Cheddar Soup,24 ounces,,24 oz deli,1,,
-Garden Vegetable and Sides,Regular,,,,,
-Pulled Chicken by the pound,Per lb,,,,,
-Smoked Beef by the pound,Per lb,,,,,
+Spaghetti & Meatballs,Regular,Spaghetti & meatballs,,,,Container?
+Spaghetti & Meatballs,Regular,Salad,Clamshell - hamburger size,1,,
+Spaghetti & Meatballs,Regular,Ranch,2 oz condiment cup,1,1.5,
+Spaghetti & Meatballs,Family,Spaghetti & meatballs,,,,Container and how many?
+Spaghetti & Meatballs,Family,Salad,Clamshell - plate size,1,,
+Spaghetti & Meatballs,Family,Ranch,2 oz condiment cup,2,1.5,
+Chicken veggie pasta,Regular,Meal,24 oz long plate,1,,
+Chicken veggie pasta,Family,Meal,24 oz long plate,2,,
+Mississippi Pork Roast,Regular,Meal,24 oz divided,1,,
+Mississippi Pork Roast,Family,Meal,24 oz long plate,3,,
+Shrimp & Grits with Brussels sprouts,Regular,Meal,24 oz long plate,1,,
+Shrimp & Grits with Brussels sprouts,Family,Meal,24 oz long plate,3,,
+Smoked Mac & Cheese with Broccoli,Regular,Meal,24 oz long plate,1,,
+Smoked Mac & Cheese with Broccoli,6 OZ,Meal,24 oz long plate,1,,
+Broccoli Cheddar Soup,Regular,Soup,16 oz deli,1,16,
+Broccoli Cheddar Soup,24 ounces,Soup,24 oz deli,1,24,
+Garden Vegetable and Sides,Regular,Sides,24 oz long plate,1,,
+Pulled Chicken by the pound,Per lb,Meat,24 oz long plate,1,,
+Pulled Chicken by the pound,Per lb,BBQ sauce,4 oz styro cup,1,3.5,
+Smoked Beef by the pound,Per lb,Meat,24 oz long plate,1,,
+Smoked Beef by the pound,Per lb,BBQ sauce,4 oz styro cup,1,3.5,

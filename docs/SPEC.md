@@ -71,8 +71,9 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 - Packaging also covers plates, cups, clamshells and wrap. Known types: 24 oz flat plate, 24 oz long plate, 4 oz styro cup, 2 oz plastic condiment cup, clamshell (hamburger size), clamshell (plate size), plastic wrap.
 - Each container line on a menu item size says **what goes in it** and the **actual fill weight**. Cups are not filled to the brim (a 4 oz cup holds ~3.5 oz), and the shopping list uses the actual fill, not the cup size.
 - **Condiments are components** (BBQ sauce, ranch). They count toward the shopping list like any other component. E.g. single ribs = 2 oz cup BBQ, family ribs = 4 oz styro BBQ; salads come with ranch: single = 1× 2 oz cup, family = 2× 2 oz cups.
-- **Salads** are a meal type: single in a hamburger-size clamshell, family in a plate-size clamshell.
-- Plastic wrap is counted per order for cost only. It's bought by the roll, so it isn't counted as containers.
+- **Salads** are not a meal on their own: they come with Spaghetti & Meatballs. Single gets a salad in a hamburger-size clamshell, family gets one in a plate-size clamshell.
+- By-the-pound meats come with 1× 4 oz styro cup of BBQ sauce (3.5 oz fill).
+- Plastic wrap is counted per order for cost only, at $0.02 per use. It's bought by the roll, so it isn't counted as containers.
 - Initial setup is entered from `docs/packaging-setup.csv`, then edited in the app.
 - Output: total containers by type for the whole order.
 
@@ -175,7 +176,8 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 ## Open Items
 
 - **Ribs:** average finished weight per rack (chef has the count).
-- **Ribs regular variation:** a blank variation on ribs — which of 4 / 6 / 8 oz is it?
-- **Soup regular portion:** blank-variation Broccoli Cheddar Soup — how many oz?
+- **Spaghetti & Meatballs:** container and count for regular and family.
+- **Labels vs plates:** family chicken pasta = 2 plates, family ribs = 2 plates, other family meals = 3 plates. Is the label count = number of plates?
+- **Mac & Cheese "6 OZ":** 6 oz of mac only, or the whole plate?
 - **Meal type per current menu item** (standard vs casserole), e.g. Chicken Veggie Pasta, Smoked Mac & Cheese w/ Broccoli. Set during first catalog setup.
 - **Kitchen-measured yields** to override USDA defaults: brisket 50%, pork butt 45% known; others as measured.
