@@ -16,8 +16,8 @@ const rows: CatalogRows = {
     { id: 'r-carrot', name: 'Glazed carrots', method: null, finished_oz: null },
   ],
   recipe_lines: [
-    { recipe_id: 'r-pork', ingredient_id: 'i-pork', raw_name: 'pork butt', oz: 16, position: 0 },
-    { recipe_id: 'r-carrot', ingredient_id: 'i-carrot', raw_name: 'carrots', oz: 16, position: 0 },
+    { recipe_id: 'r-pork', ingredient_id: 'i-pork', sub_recipe_id: null, raw_name: 'pork butt', oz: 16, position: 0 },
+    { recipe_id: 'r-carrot', ingredient_id: 'i-carrot', sub_recipe_id: null, raw_name: 'carrots', oz: 16, position: 0 },
   ],
   container_types: [
     { id: 'c-div', name: '24 oz divided', cost_only: false },

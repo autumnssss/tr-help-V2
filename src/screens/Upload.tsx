@@ -17,6 +17,7 @@ function describe(u: Unresolved, recipeName: (id: string) => string): string {
     case 'recipe': return `Recipe missing or has no finished weight: ${recipeName(u.recipeId)}`;
     case 'ingredient': return `${recipeName(u.recipeId)}: “${u.ingredient}” not linked to a library ingredient`;
     case 'weight': return `${recipeName(u.recipeId)}: “${u.ingredient}” has no weight (needs weight per cup)`;
+    case 'cycle': return `${recipeName(u.recipeId)} is used inside itself (recipe loop)`;
   }
 }
 
@@ -138,9 +139,14 @@ export function Upload({ catalog }: { catalog: Catalog }) {
                 <h4>{METHOD_LABEL[g.method] ?? g.method}</h4>
                 <table>
                   <tbody>
-                    {g.items.map(i => (
-                      <tr key={i.recipeId}><td>{i.name}</td><td className="num">{i.finishedLb.toFixed(2)} lb</td></tr>
-                    ))}
+                    {g.items.flatMap(i => [
+                      <tr key={i.recipeId}><td>{i.name}</td><td className="num">{i.finishedLb.toFixed(2)} lb</td></tr>,
+                      ...(i.usedIn ?? []).map(u => (
+                        <tr key={`${i.recipeId}>${u.name}`} className="used-in">
+                          <td>{u.name}</td><td className="num">{u.lb.toFixed(2)} lb</td>
+                        </tr>
+                      )),
+                    ])}
                   </tbody>
                 </table>
               </div>

@@ -46,3 +46,5 @@ th { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-s
   body, .card { background: #fff; }
   .card { border: 0; padding: 0; break-inside: avoid; }
 }
+.used-in td { padding-top: 3px; padding-bottom: 3px; color: var(--muted); font-size: 0.9rem; }
+.used-in td:first-child { padding-left: 24px; }

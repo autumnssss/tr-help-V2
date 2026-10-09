@@ -70,7 +70,7 @@ select pg_temp.container('Plastic wrap', true);
 
 -- Component recipes with their primary cooking method (null = not set yet).
 select pg_temp.recipe(n, m) from (values
-  ('Mississippi Pork Roast', 'braise'), ('Potatoes', 'boil'), ('Honey Glazed Carrots', null),
+  ('Mississippi Pork Roast', 'braise'), ('Mashed Potatoes', null), ('Boiled Potatoes', 'boil'), ('Honey Glazed Carrots', null),
   ('Shrimp', 'saute'), ('Cheesy Grits', 'boil'), ('Brussels Sprouts', 'roast'),
   ('Ribs', 'smoke'), ('Corn Niblets', null), ('Potato Salad', 'no-cook'), ('BBQ Sauce', 'no-cook'),
   ('Pulled Chicken', 'smoke'), ('Smoked Brisket', 'smoke'),
@@ -79,10 +79,10 @@ select pg_temp.recipe(n, m) from (values
 
 -- Standard meals: 4/4/4 regular, 16/16/16 family.
 select pg_temp.size(pg_temp.item('Mississippi Pork Roast'), 'regular', 1,
-  array[['Mississippi Pork Roast','4'],['Potatoes','4'],['Honey Glazed Carrots','4']],
+  array[['Mississippi Pork Roast','4'],['Mashed Potatoes','4'],['Honey Glazed Carrots','4']],
   array[['24 oz divided','1','Meal']]);
 select pg_temp.size(pg_temp.item('Mississippi Pork Roast'), 'family', 3,
-  array[['Mississippi Pork Roast','16'],['Potatoes','16'],['Honey Glazed Carrots','16']],
+  array[['Mississippi Pork Roast','16'],['Mashed Potatoes','16'],['Honey Glazed Carrots','16']],
   array[['24 oz long plate','3','Meal']]);
 
 select pg_temp.size(pg_temp.item('Shrimp & Grits with Brussels sprouts'), 'regular', 1,

@@ -27,11 +27,15 @@ export type Recipe = {
   /**
    * As-purchased weight of each ingredient for one batch. `name` is what the recipe says.
    * Null ingredientId = not linked to the library yet; null oz = amount not convertible to weight yet.
+   * A line with `recipeId` uses another recipe instead (e.g. Boiled Potatoes in Potato Salad):
+   * its oz is that recipe's finished weight per batch.
    */
-  lines: { ingredientId: string | null; name?: string; oz: number | null }[];
+  lines: RecipeLine[];
   /** Measured finished batch weight. Absent = estimated from ingredient yields. */
   finishedOz?: number;
 };
+
+export type RecipeLine = { ingredientId: string | null; recipeId?: string; name?: string; oz: number | null };
 
 /** Finished (plate-ready) oz of a recipe in one order. Cups use actual fill, not cup size. */
 export type Portion = { recipeId: string; oz: number };
@@ -73,7 +77,9 @@ export type Unresolved =
   /** Line not linked to a library ingredient (or linked to one that's gone). */
   | { kind: 'ingredient'; recipeId: string; ingredient: string }
   /** Line amount has no weight yet, e.g. cups of an ingredient with no grams-per-cup. */
-  | { kind: 'weight'; recipeId: string; ingredient: string };
+  | { kind: 'weight'; recipeId: string; ingredient: string }
+  /** Recipes that use each other in a loop (A uses B uses A). */
+  | { kind: 'cycle'; recipeId: string };
 
 export type ShoppingLine = {
   ingredientId: string;
@@ -84,7 +90,13 @@ export type ShoppingLine = {
   packages?: { count: number; unit: string };
 };
 
-export type PrepLine = { recipeId: string; name: string; finishedLb: number };
+export type PrepLine = {
+  recipeId: string;
+  name: string;
+  finishedLb: number;
+  /** For base recipes used inside other recipes: where the total goes, e.g. Potato Salad 5 lb, Mashed Potatoes 7 lb. */
+  usedIn?: { name: string; lb: number }[];
+};
 
 /** Per-component totals for everything sold: portion counts → finished weight → what to buy. */
 export type ComponentLine = {
@@ -128,7 +140,8 @@ export function casseroleMeal(entree: string, veg: string) {
 export function finishedBatchOz(recipe: Recipe, ingredients: Map<string, Ingredient>): number {
   if (recipe.finishedOz) return recipe.finishedOz;
   return recipe.lines.reduce(
-    (sum, l) => sum + (l.oz ?? 0) * ((l.ingredientId && ingredients.get(l.ingredientId)?.yield) || 0),
+    // A sub-recipe line is already finished weight.
+    (sum, l) => sum + (l.oz ?? 0) * (l.recipeId ? 1 : (l.ingredientId && ingredients.get(l.ingredientId)?.yield) || 0),
     0,
   );
 }
@@ -215,14 +228,47 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     add(labels, item.titles[0] ?? o.item, labelCount * o.quantity);
   }
 
-  // Finished oz per recipe → as-purchased oz per ingredient.
+  // Push plate demand down into sub-recipes (Potato Salad → Boiled Potatoes).
+  // usedIn: sub-recipe → parent recipe → finished oz it takes.
+  const expand = (direct: Map<string, number>) => {
+    const total = new Map<string, number>();
+    const usedIn = new Map<string, Map<string, number>>();
+    const visit = (recipeId: string, oz: number, path: string[]) => {
+      add(total, recipeId, oz);
+      const recipe = recipes.get(recipeId);
+      const subs = recipe?.lines.filter(l => l.recipeId) ?? [];
+      if (!recipe || !subs.length || oz <= 0) return;
+      const batch = finishedBatchOz(recipe, ingredients);
+      if (batch <= 0) return; // flagged when the recipe itself is checked
+      for (const l of subs) {
+        if (l.oz === null) continue; // flagged as 'weight'
+        if (path.includes(l.recipeId!)) { flag({ kind: 'cycle', recipeId: l.recipeId! }); continue; }
+        const childOz = (l.oz * oz) / batch;
+        const parents = usedIn.get(l.recipeId!) ?? new Map<string, number>();
+        add(parents, recipeId, childOz);
+        usedIn.set(l.recipeId!, parents);
+        visit(l.recipeId!, childOz, [...path, l.recipeId!]);
+      }
+    };
+    for (const [recipeId, oz] of direct) visit(recipeId, oz, [recipeId]);
+    return { total, usedIn };
+  };
+  const shop = expand(shopOz);
+  const prep = expand(prepOz);
+
+  // Finished oz per recipe → as-purchased oz per ingredient (each recipe's own ingredient lines).
   const buyOz = new Map<string, number>();
   const recipeBuy = new Map<string, Map<string, number>>(); // recipeId → ingredientId → oz
-  for (const [recipeId, needOz] of shopOz) {
+  for (const [recipeId, needOz] of shop.total) {
     const recipe = recipes.get(recipeId);
     if (!recipe) { flag({ kind: 'recipe', recipeId }); continue; }
     let ok = true;
     for (const l of recipe.lines) {
+      if (l.recipeId) {
+        if (!recipes.has(l.recipeId)) { flag({ kind: 'recipe', recipeId: l.recipeId }); ok = false; }
+        else if (l.oz === null) { flag({ kind: 'weight', recipeId, ingredient: recipes.get(l.recipeId)!.name }); ok = false; }
+        continue;
+      }
       const ing = l.ingredientId ? ingredients.get(l.ingredientId) : undefined;
       const label = ing?.name ?? l.name ?? l.ingredientId ?? '?';
       if (!ing) { flag({ kind: 'ingredient', recipeId, ingredient: label }); ok = false; }
@@ -234,6 +280,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     const multiplier = needOz / batch;
     const mine = new Map<string, number>();
     for (const l of recipe.lines) {
+      if (l.recipeId) continue; // bought through the sub-recipe
       const ing = ingredients.get(l.ingredientId!)!;
       const oz = l.oz! * multiplier * (1 + (ing.buffer ?? 0));
       add(buyOz, ing.id, oz);
@@ -245,7 +292,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
   const shoppingList = [...buyOz].map(([id, oz]) => buyLine(ingredients.get(id)!, oz)).sort(byName);
 
-  const components: ComponentLine[] = [...shopOz]
+  const components: ComponentLine[] = [...shop.total]
     .filter(([, oz]) => oz > 0)
     .map(([recipeId, oz]) => {
       const recipe = recipes.get(recipeId);
@@ -264,11 +311,20 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     .sort(byName);
 
   const methods = new Map<CookingMethod, PrepLine[]>();
-  for (const [recipeId, oz] of prepOz) {
+  for (const [recipeId, oz] of prep.total) {
     const recipe = recipes.get(recipeId);
     if (!recipe || oz <= 0) continue;
     const list = methods.get(recipe.method) ?? [];
-    list.push({ recipeId, name: recipe.name, finishedLb: round2(oz / 16) });
+    const line: PrepLine = { recipeId, name: recipe.name, finishedLb: round2(oz / 16) };
+    const parents = prep.usedIn.get(recipeId);
+    if (parents) {
+      const plated = prepOz.get(recipeId) ?? 0;
+      line.usedIn = [
+        ...[...parents].map(([id, pOz]) => ({ name: recipes.get(id)?.name ?? id, lb: round2(pOz / 16) })),
+        ...(plated > 0 ? [{ name: 'Plated as is', lb: round2(plated / 16) }] : []),
+      ].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    list.push(line);
     methods.set(recipe.method, list);
   }
   const prepSheet = [...methods]
