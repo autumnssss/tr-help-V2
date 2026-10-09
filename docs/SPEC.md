@@ -68,6 +68,12 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 
 - Container types are a kitchen-editable list. Starting set: 16 oz deli, 24 oz deli, 32 oz deli, 24 oz long, 24 oz deep, 24 oz divided.
 - Containers are set on the **menu item + size** (regular / family / N oz), not on the component recipe, because the same recipe is packed differently in different meals. Each size can use several containers (e.g. a family meal = 3 containers).
+- Packaging also covers plates, cups, clamshells and wrap. Known types: 24 oz flat plate, 24 oz long plate, 4 oz styro cup, 2 oz plastic condiment cup, clamshell (hamburger size), clamshell (plate size), plastic wrap.
+- Each container line on a menu item size says **what goes in it** and the **actual fill weight**. Cups are not filled to the brim (a 4 oz cup holds ~3.5 oz), and the shopping list uses the actual fill, not the cup size.
+- **Condiments are components** (BBQ sauce, ranch). They count toward the shopping list like any other component. E.g. single ribs = 2 oz cup BBQ, family ribs = 4 oz styro BBQ; salads come with ranch: single = 1× 2 oz cup, family = 2× 2 oz cups.
+- **Salads** are a meal type: single in a hamburger-size clamshell, family in a plate-size clamshell.
+- Plastic wrap is counted per order for cost only. It's bought by the roll, so it isn't counted as containers.
+- Initial setup is entered from `docs/packaging-setup.csv`, then edited in the app.
 - Output: total containers by type for the whole order.
 
 ### Nutrition
