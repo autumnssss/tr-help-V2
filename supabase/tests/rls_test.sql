@@ -11,12 +11,17 @@ begin
   select count(*) into n from public.kitchen_recipes where kitchen_id = k1;
   assert n = 2, format('expected 2 migrated recipes, got %s', n);
   select count(*) into n from public.recipe_lines where kitchen_id = k1;
-  assert n = 5, format('expected 5 lines (blank row skipped), got %s', n);
+  assert n = 10, format('expected 10 lines (blank row skipped), got %s', n);
   assert (select oz from public.recipe_lines where raw_name = 'brisket packer') = 192, 'lb → oz';
   assert (select oz from public.recipe_lines where raw_name = 'kosher salt') = 1.5, 'oz. with mixed fraction';
   assert (select oz from public.recipe_lines where raw_name = 'beef rub') is null, 'cup stays null';
   assert (select amount from public.recipe_lines where raw_name = 'flour') = 0.5, 'unicode fraction';
   assert (select round(oz, 2) from public.recipe_lines where raw_name = 'butter') = 8.82, 'g → oz';
+  assert (select oz from public.recipe_lines where raw_name = 'mini marshmallows') = 16, 'weight in amount';
+  assert (select oz from public.recipe_lines where raw_name = 'black beans') = 30, 'package size in unit';
+  assert (select oz from public.recipe_lines where raw_name = 'crushed tomatoes') = 28, 'ounce can';
+  assert (select oz from public.recipe_lines where raw_name = 'unsalted butter') = 8, 'sticks';
+  assert (select oz from public.recipe_lines where raw_name = 'whole chicken') is null, 'weight range stays null';
   assert (select section from public.recipe_lines where raw_name = 'butter') = 'WET', 'section label';
   select count(*) into n from public.price_quotes where kitchen_id = k1;
   assert n = 2, format('expected 2 prices, got %s', n);

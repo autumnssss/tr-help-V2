@@ -2,8 +2,8 @@
 -- Safe to re-run: rows already copied (matched on v1_id) are skipped.
 -- V1's tables are read only, never changed.
 --
--- Recipe lines keep what V1 said (amount, unit, name). Weight units are
--- converted to oz now. Volume/count units stay null until the ingredient gets
+-- Recipe lines keep what V1 said (amount, unit, name). Weights are converted
+-- to oz now (see line_oz). Volume/count units stay null until the ingredient gets
 -- a grams-per-cup or is linked; the planner flags those lines, it never guesses.
 -- Ingredient links are left empty: the library starts empty, so matching
 -- happens in the review screen.
@@ -41,6 +41,27 @@ language sql immutable as $$
     else null end
 $$;
 
+-- As-purchased oz for one V1 line, or null when it can't be known without a
+-- weight per cup / per piece. Handles: amount × weight unit ("2" "lb"),
+-- weight in the amount ("16 oz" "bag"), package size in the unit
+-- ("1" "15-oz can", "28" "ounce can"), and sticks of butter (4 oz).
+create function pg_temp.line_oz(amt text, unit text) returns numeric
+language plpgsql immutable as $$
+declare
+  a numeric := pg_temp.parse_amount(amt);
+  u text := regexp_replace(lower(trim(coalesce(unit, ''))), '\.', '', 'g');
+  m text[];
+begin
+  if a is not null and pg_temp.oz_per_unit(u) is not null then return a * pg_temp.oz_per_unit(u); end if;
+  m := regexp_match(lower(trim(coalesce(amt, ''))), '^(\d+(?:\.\d+)?)\s*-?\s*([a-z]+)$');
+  if m is not null and pg_temp.oz_per_unit(m[2]) is not null then return m[1]::numeric * pg_temp.oz_per_unit(m[2]); end if;
+  m := regexp_match(u, '^(\d+(?:\.\d+)?)\s*-?\s*(oz|ounce|ounces|lb|lbs|g)\s+(can|jar|bag|box|package|pkg|bottle|container)s?$');
+  if a is not null and m is not null then return a * m[1]::numeric * pg_temp.oz_per_unit(m[2]); end if;
+  if a is not null and u ~ '^(ounce|ounces|oz)\s+(can|jar|bag|box|package|pkg|bottle|container)s?$' then return a; end if;
+  if a is not null and u in ('stick', 'sticks') then return a * 4; end if;
+  return null;
+end $$;
+
 -- V1 stored sections as jsonb (or as JSON text); normalize to a jsonb array.
 create function pg_temp.sections(v jsonb) returns jsonb
 language sql immutable as $$
@@ -73,7 +94,7 @@ select ins.kitchen_id, ins.id,
        coalesce(trim(ing.i->>'unit'), ''),
        coalesce(trim(ing.i->>'name'), ''),
        coalesce(ing.i->>'note', ''),
-       pg_temp.parse_amount(ing.i->>'amt') * pg_temp.oz_per_unit(ing.i->>'unit')
+       pg_temp.line_oz(ing.i->>'amt', ing.i->>'unit')
 from ins
 cross join lateral jsonb_array_elements(pg_temp.sections(ins.v1_data->'sections')) with ordinality as sec(s, n)
 cross join lateral jsonb_array_elements(coalesce(sec.s->'ingredients', '[]'::jsonb)) with ordinality as ing(i, n)
