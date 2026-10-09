@@ -13,3 +13,5 @@ psql -f "$here/supabase_stub.sql"
 for f in "$here"/../migrations/*.sql; do psql -f "$f"; done
 psql -f "$here/../migrations/20261009000002_migrate_v1.sql"  # re-run must be a no-op
 psql -f "$here/rls_test.sql"
+for f in "$here"/../seed/*.sql; do psql -f "$f" >/dev/null; psql -f "$f" >/dev/null; done  # seeds apply and re-apply cleanly
+psql -At -c "select 'menu items: ' || count(*) from menu_items" -c "select 'sizes: ' || count(*) from menu_sizes" -c "select 'portions: ' || count(*) from size_portions" -c "select 'recipes (non-V1): ' || count(*) from kitchen_recipes where v1_id is null"
