@@ -14,7 +14,8 @@ Drop the weekly Hotplate prep-list CSV into the app and get back:
 
 1. **Shopping list** — the as-purchased weight (or package/rack count) of every ingredient needed to fill every meal sold, after all yield loss and buffer.
 2. **Label counts** — how many Munbyn labels to print per meal (family meals = 3 labels).
-3. **Prep sheet** — finished weight of each component to produce, based on what is still left to prep.
+3. **Prep sheet** — one total finished weight per component for the whole order (e.g. "Broccoli: 14 lb"), summed across every meal it appears in, never split by meal. Grouped by cooking method (smoke, braise, boil, grill, roast, etc.). Based on what is still left to prep.
+4. **Container counts** — total containers to pull by type (16 / 24 / 32 oz deli, 24 oz long, 24 oz deep, 24 oz divided).
 
 The app knows each menu item's components and portions, each recipe's finished yield, and each ingredient's as-purchased → plate-ready yield. Anything it doesn't recognize, it stops and asks about once, then remembers.
 
@@ -58,6 +59,17 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 - Labels stay designed and printed in Munbyn. The app only outputs counts.
 - Regular = 1 label, family = 3 labels, Garden plate = 1 label. Trial rule, adjustable.
 
+### Prep sheet
+
+- One line per component recipe with the **total** finished weight needed across all meals. No per-meal breakdown: the kitchen cooks the total, plating divides it.
+- Each recipe has one **primary cooking method** (smoke, braise, boil, grill, roast, sauté, bake, no-cook). The prep sheet is grouped by method so each station sees its list.
+
+### Containers
+
+- Container types are a kitchen-editable list. Starting set: 16 oz deli, 24 oz deli, 32 oz deli, 24 oz long, 24 oz deep, 24 oz divided.
+- Containers are set on the **menu item + size** (regular / family / N oz), not on the component recipe, because the same recipe is packed differently in different meals. Each size can use several containers (e.g. a family meal = 3 containers).
+- Output: total containers by type for the whole order.
+
 ### Nutrition
 
 - Macros only (calories, protein, carbs, fat) **per 4 oz** of each finished item, for reference and for typing into Munbyn labels.
@@ -90,7 +102,10 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 22. As the owner, I want recipe ingredients in cups or spoons converted to weight, so that imported recipes still produce a shopping list.
 23. As the owner, I want the app to ask once for an ingredient's weight per cup when it can't convert, so that the list is never silently wrong.
 24. As the owner, I want one combined shopping list for the whole file, so that I shop once per week.
-25. As the owner, I want a prep sheet with finished weight per component based on Remaining, so that the kitchen knows what's left to make.
+25. As the owner, I want a prep sheet with one total finished weight per component across all meals, so that nobody has to add up per-dish amounts and nothing gets missed.
+37. As the owner, I want the prep sheet grouped by cooking method, so that each station sees everything it needs to smoke, braise, boil or grill.
+38. As the owner, I want to set which containers each menu item and size is packed in, so that the app can count packaging.
+39. As the owner, I want total container counts by type for the order, so that we never run out of a container mid-packing.
 26. As the owner, I want label counts per meal (family = 3), so that I stop counting the order list by hand.
 27. As the owner, I want macros per 4 oz for each item, so that I can key them into new Munbyn labels.
 28. As the owner, I want to add recipes from a photo, so that handwritten recipes get in quickly.
@@ -102,6 +117,9 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 34. As the owner, I want every record tied to our kitchen, so that the app can later be sold to other kitchens without a rebuild.
 35. As any user, I want the app to work on phone, tablet and computer, so that I can use whatever is in front of me.
 36. As the owner, I want recipe costs to come from receipt prices, so that costing uses real prices. *(Milestone 2)*
+40. As the owner, I want true cost per plate (ingredients after yield loss + containers + label), so that I know real margin per dish. *(Milestone 2)*
+41. As the owner, I want to enter each option's add-on price once (e.g. Family), so that margin per size is correct even though the Hotplate CSV price is not. *(Milestone 2)*
+42. As the owner, I want best price per item and which store has it, so that I know where to buy what. *(Milestone 2, carried from V1)*
 
 ## Implementation Decisions
 
@@ -112,7 +130,7 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
   - **Menu catalog** — menu items, their meal type (standard / casserole / by-the-pound / side plate), component recipes, portion overrides, variation rules, and remembered title/variation/side aliases.
   - **Recipe book** — recipes with ingredient lines (amount, unit, ingredient link), finished batch weight (estimated or measured), and import from photo / link / file / manual.
   - **Ingredient library** — name, yield % (+ source: USDA default or override), buffer %, unpredictable flag, weight-per-volume conversions, package size + unit, USDA FoodData Central nutrient link, macros override.
-  - **Planner (the single core seam)** — a pure function: `(order lines, catalog, recipes, ingredients) → { shoppingList, prepSheet, labelCounts, unresolved[] }`. No I/O. If `unresolved` is non-empty, the UI walks the user through linking each item, then re-runs.
+  - **Planner (the single core seam)** — a pure function: `(order lines, catalog, recipes, ingredients) → { shoppingList, prepSheet, labelCounts, containerCounts, unresolved[] }`. No I/O. If `unresolved` is non-empty, the UI walks the user through linking each item, then re-runs.
 - **Calculation chain:** order line → portions per component (by variation) → finished weight per recipe → batch multiplier (finished needed ÷ finished batch weight) → ingredient as-purchased amounts × multiplier × (1 + buffer) → summed per ingredient → converted to purchase units, rounded up to whole packages.
 - **Recipe finished weight** defaults to Σ(as-purchased weight × ingredient yield); a measured value overrides it. Ingredient amounts in recipes are as-purchased.
 - **V1 migration:** existing `recipes` (free-text ingredients inside sections) are imported, and their ingredients are matched to the library: automatic where confident, reviewed by the user otherwise. Existing price data is kept for Milestone 2.
@@ -126,12 +144,13 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 - **Importer tests** use the real fixture `tests/fixtures/hotplate-prep-list-2026-10-08.csv`. They assert multi-line descriptions parse, titles trim, variations classify, and Garden plate `2x` picks are counted.
 - **End-to-end golden test:** fixture CSV + a hand-built catalog → a shopping list checked by hand against kitchen math once, then locked in.
 - Key cases: family = 1 lb/component; casserole 8+4; by-the-pound; `N oz` variations; Garden plate sides; buffer applied; yield over 100%; package rounding; unknown item → unresolved, not dropped.
+- Prep sheet: the same component in several meals sums to one line; grouped by cooking method. Container counts total by type.
 - No prior test art exists (V1 has no tests). Use Vitest.
 
 ## Milestones
 
-1. **CSV → shopping list** (this spec's core): login, ingredient library with USDA yields, recipes (manual + photo/text import from V1), menu catalog, Hotplate import, Planner, shopping list, prep sheet, label counts, V1 data migration.
-2. Macros per 4 oz, link and file recipe import, recipe costing from receipt prices.
+1. **CSV → shopping list** (this spec's core): login, ingredient library with USDA yields, recipes (manual + photo/text import from V1), menu catalog with containers, Hotplate import, Planner, shopping list, combined prep sheet by cooking method, label counts, container counts, V1 data migration.
+2. **Profit per plate — top priority right after M1:** receipt prices linked to library ingredients, best price per store, cost per plate (ingredients after yield + containers + label), option add-on prices, margin per menu item and size. Also macros per 4 oz, link and file recipe import.
 3. Selling memberships to other kitchens (separate decision, not before V2 runs our own kitchen).
 
 ## Out of Scope
@@ -142,6 +161,8 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 - Full nutrition panels (macros only).
 - Customer names / per-customer labels (the prep-list CSV has none).
 - Revenue reporting from the CSV `Price` column.
+- Sales history and trends (Hotplate already provides this).
+- Smoker/oven scheduling (cooking-method grouping only).
 - Billing, sign-up and onboarding for other kitchens.
 - Direct Hotplate API integration (CSV upload only).
 
