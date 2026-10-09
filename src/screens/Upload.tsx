@@ -162,7 +162,11 @@ export function Upload({ catalog }: { catalog: Catalog }) {
                     {g.items.flatMap(i => [
                       <tr key={i.recipeId} className={done.has(i.recipeId) ? 'done' : ''}>
                         {check(i.recipeId, i.name)}
-                        <td>{i.name}</td><td className="num">{i.finishedLb.toFixed(2)} lb</td>
+                        <td>
+                          {i.name}
+                          {i.raw && <div className="raw">from {i.raw.lb.toFixed(2)} lb raw {i.raw.name}</div>}
+                        </td>
+                        <td className="num">{i.finishedLb.toFixed(2)} lb</td>
                       </tr>,
                       ...(i.usedIn ?? []).map(u => {
                         const id = `${i.recipeId}>${u.recipeId ?? 'plated'}`;

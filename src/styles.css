@@ -56,3 +56,4 @@ tr.done td:not(.check) { text-decoration: line-through; color: var(--muted); }
 @media print { tr.done td:not(.check) { text-decoration: none; color: inherit; } }
 tr.done .nest { text-decoration: line-through; }
 @media print { tr.done .nest { text-decoration: none; } }
+.raw { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }

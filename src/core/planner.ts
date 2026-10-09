@@ -99,6 +99,8 @@ export type PrepLine = {
    * Mashed Potatoes 7 lb (weight of the base going into each). recipeId absent = plated as is.
    */
   usedIn?: { recipeId?: string; name: string; lb: number }[];
+  /** Raw weight to peel/trim when one ingredient is most of the recipe, e.g. 15 lb raw potatoes → 12 lb boiled. */
+  raw?: { name: string; lb: number };
 };
 
 /** Per-component totals for everything sold: portion counts → finished weight → what to buy. */
@@ -321,12 +323,27 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     for (const parentId of parents.keys()) if (recipes.get(parentId)?.method === station) nested.add(parentId);
   }
 
+  // As-purchased weight of the ingredient that is ≥75% of a recipe's own raw weight (no buying buffer).
+  function mainRawIngredient(recipe: Recipe, finishedOz: number): PrepLine['raw'] {
+    const own = recipe.lines.filter(l => !l.recipeId);
+    if (!own.length || own.some(l => l.oz === null || !l.ingredientId || !ingredients.has(l.ingredientId))) return undefined;
+    if (recipe.lines.some(l => l.recipeId)) return undefined; // the raw work happens in the sub-recipe
+    const batch = finishedBatchOz(recipe, ingredients);
+    if (batch <= 0) return undefined;
+    const total = own.reduce((sum, l) => sum + l.oz!, 0);
+    const main = own.reduce((a, b) => (b.oz! > a.oz! ? b : a));
+    if (main.oz! < 0.75 * total) return undefined;
+    return { name: ingredients.get(main.ingredientId!)!.name, lb: round2((main.oz! * finishedOz) / batch / 16) };
+  }
+
   const methods = new Map<CookingMethod, PrepLine[]>();
   for (const [recipeId, oz] of prep.total) {
     const recipe = recipes.get(recipeId);
     if (!recipe || oz <= 0 || nested.has(recipeId)) continue;
     const list = methods.get(recipe.method) ?? [];
     const line: PrepLine = { recipeId, name: recipe.name, finishedLb: round2(oz / 16) };
+    const raw = mainRawIngredient(recipe, oz);
+    if (raw) line.raw = raw;
     const parents = prep.usedIn.get(recipeId);
     if (parents) {
       const plated = prepOz.get(recipeId) ?? 0;

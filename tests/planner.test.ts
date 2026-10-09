@@ -129,7 +129,7 @@ describe('plan: prep sheet, labels, containers', () => {
       order('Garden Vegetable and Sides', 2, 'Glazed Carrots'),
     ], base);
     const roast = p.prepSheet.find(g => g.method === 'roast')?.items;
-    expect(roast).toEqual([{ recipeId: 'carrots', name: 'carrots', finishedLb: 1 }]); // 2×4 oz + 2×4 oz
+    expect(roast).toEqual([{ recipeId: 'carrots', name: 'carrots', finishedLb: 1, raw: { name: 'carrots', lb: 1.25 } }]); // 2×4 oz + 2×4 oz; raw at 80% yield
     expect(p.prepSheet.find(g => g.method === 'smoke')?.items[0]?.finishedLb).toBe(0.5);
   });
 

@@ -31,6 +31,7 @@ describe('recipes inside recipes', () => {
     const boil = p.prepSheet.find(g => g.method === 'boil')!;
     expect(boil.items).toEqual([{
       recipeId: 'boiled', name: 'Boiled Potatoes', finishedLb: 12,
+      raw: { name: 'potatoes', lb: 15 }, // peel 15 lb raw for 12 lb boiled at 80% yield
       usedIn: [{ recipeId: 'mash', name: 'Mashed Potatoes', lb: 7 }, { recipeId: 'salad', name: 'Potato Salad', lb: 5 }],
     }]); // Potato Salad (same station) is only nested, not listed twice
     // A dish at a different station still gets its own line there.
