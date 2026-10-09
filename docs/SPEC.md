@@ -27,7 +27,7 @@ The app knows each menu item's components and portions, each recipe's finished y
 |---|---|---|
 | Standard (protein + starch + veg) | 4 oz + 4 oz + 4 oz | 16 oz + 16 oz + 16 oz |
 | Casserole-style (entree + veg) | 8 oz entree + 4 oz veg | 16 oz + 16 oz |
-| Garden plate side | 4 oz per side | — |
+| Garden plate side | Up to 3 sides per plate, 4 oz each (a 2x pick counts as 2) | — |
 | By-the-pound items | Quantity = lb of finished product | — |
 | Size variations ("6 OZ", "24 ounces") | That many oz of finished product | — |
 
