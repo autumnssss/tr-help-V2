@@ -20,6 +20,8 @@ function describe(u: Unresolved, recipeName: (id: string) => string): string {
   }
 }
 
+const fmtOz = (oz: number) => `${Number.isInteger(oz) ? oz : oz.toFixed(1)} oz`;
+
 const dates = (orders: OrderLine[]) =>
   [...new Set(orders.map(o => o.windowStart.slice(0, 10)).filter(Boolean))].sort();
 
@@ -85,6 +87,29 @@ export function Upload({ catalog }: { catalog: Catalog }) {
               <ul>{r.unresolved.map((u, i) => <li key={i}>{describe(u, recipeName)}</li>)}</ul>
             </section>
           )}
+
+          <section className="card">
+            <h3>Totals by item</h3>
+            <p className="muted">Every portion sold (Quantity) → cooked weight → what to buy.</p>
+            {r.components.length === 0 ? <p className="muted">Nothing yet.</p> : r.components.map(c => (
+              <div key={c.recipeId} className="component">
+                <div className="component-head">
+                  <strong>{c.name}</strong>
+                  <span className="muted">{c.portions.map(p => `${p.label} ×${p.count}`).join(' · ')}</span>
+                </div>
+                <div className="component-cooked">= {fmtOz(c.finishedOz)} cooked ({c.finishedLb.toFixed(2)} lb)</div>
+                {c.buy.length === 0
+                  ? <div className="muted">Buy amount: recipe not fully set up yet</div>
+                  : c.buy.map(b => (
+                    <div key={b.ingredientId} className="component-buy">
+                      Buy {b.packages ? `${b.packages.count} × ${b.packages.unit}` : `${b.lb.toFixed(2)} lb`}
+                      {c.buy.length > 1 || b.name !== c.name ? <span className="buy-name"> {b.name}</span> : null}
+                      {b.packages && <span className="muted"> ({b.lb.toFixed(2)} lb)</span>}
+                    </div>
+                  ))}
+              </div>
+            ))}
+          </section>
 
           <section className="card">
             <h3>Shopping list</h3>

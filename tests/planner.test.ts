@@ -189,3 +189,38 @@ describe('plan: unknowns are flagged, never silently dropped', () => {
     expect(lb(p, 'brisket')).toBe(2); // the 1 lb of smoked beef still makes the list
   });
 });
+
+describe('plan: per-component totals', () => {
+  const ribs: Catalog = {
+    ingredients: [ing('ribs', 0.5)],
+    recipes: [simple('ribs', 'smoke')],
+    menu: [{
+      id: 'ribs', titles: ['Ribs'], kind: 'meal',
+      sizes: {
+        regular: { portions: [{ recipeId: 'ribs', oz: 4 }], packaging: [], labels: 1 },
+        '6 oz': { portions: [{ recipeId: 'ribs', oz: 6 }], packaging: [], labels: 1 },
+        family: { portions: [{ recipeId: 'ribs', oz: 16 }], packaging: [], labels: 2 },
+      },
+    }],
+    sides: {},
+  };
+
+  it('shows portion counts, cooked total and what to buy', () => {
+    const p = plan([order('Ribs', 6), order('Ribs', 1, '6 OZ'), order('Ribs', 2, 'Family - Full Rack + sides')], ribs);
+    expect(p.components).toEqual([{
+      recipeId: 'ribs', name: 'ribs', method: 'smoke',
+      portions: [
+        { label: '4 oz', oz: 4, count: 6 },
+        { label: '6 oz', oz: 6, count: 1 },
+        { label: 'Family', oz: 16, count: 2 },
+      ],
+      finishedOz: 62, finishedLb: 3.88,
+      buy: [{ ingredientId: 'ribs', name: 'ribs', oz: 124, lb: 7.75 }],
+    }]);
+  });
+
+  it('counts side-plate 2x picks as separate side portions', () => {
+    const p = plan([order('Garden Vegetable and Sides', 1, 'Glazed Carrots • 2x Brussels Sprouts')], base);
+    expect(p.components.find(c => c.recipeId === 'brussels sprouts')?.portions).toEqual([{ label: '4 oz', oz: 4, count: 2 }]);
+  });
+});
