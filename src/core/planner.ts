@@ -86,10 +86,24 @@ export type ShoppingLine = {
 
 export type PrepLine = { recipeId: string; name: string; finishedLb: number };
 
+/** Per-component totals for everything sold: portion counts → finished weight → what to buy. */
+export type ComponentLine = {
+  recipeId: string;
+  name: string;
+  method: CookingMethod;
+  /** e.g. [{label:'4 oz', oz:4, count:6}, {label:'Family', oz:16, count:2}] */
+  portions: { label: string; oz: number; count: number }[];
+  finishedOz: number;
+  finishedLb: number;
+  /** As-purchased amounts for this component only. Empty until its recipe is fully set up. */
+  buy: ShoppingLine[];
+};
+
 export type Plan = {
   complete: boolean;
   unresolved: Unresolved[];
   shoppingList: ShoppingLine[];
+  components: ComponentLine[];
   prepSheet: { method: CookingMethod; items: PrepLine[] }[];
   labels: { title: string; count: number }[];
   containers: { container: string; count: number }[];
@@ -119,6 +133,15 @@ export function finishedBatchOz(recipe: Recipe, ingredients: Map<string, Ingredi
   );
 }
 
+function buyLine(ing: Ingredient, oz: number): ShoppingLine {
+  const line: ShoppingLine = { ingredientId: ing.id, name: ing.name, oz: round2(oz), lb: round2(oz / 16) };
+  if (ing.purchase) {
+    // Tolerance so float noise (e.g. 2.0000001) doesn't add a package.
+    line.packages = { count: Math.ceil(oz / ing.purchase.oz - 1e-9), unit: ing.purchase.unit };
+  }
+  return line;
+}
+
 function sizeKey(variation: string, sizes: Record<string, Size>): string | undefined {
   const v = normalizeName(variation);
   if (v === '') return sizes.regular ? 'regular' : undefined;
@@ -139,6 +162,16 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
 
   const shopOz = new Map<string, number>(); // recipeId → finished oz to buy for (Quantity)
   const prepOz = new Map<string, number>(); // recipeId → finished oz still to prep (Remaining)
+  // recipeId → portion label → {oz, count}
+  const portionCounts = new Map<string, Map<string, { oz: number; count: number }>>();
+  const countPortion = (recipeId: string, label: string, oz: number, count: number) => {
+    const byLabel = portionCounts.get(recipeId) ?? new Map<string, { oz: number; count: number }>();
+    const key = `${label}|${oz}`;
+    const cur = byLabel.get(key) ?? { oz, count: 0 };
+    cur.count += count;
+    byLabel.set(key, cur);
+    portionCounts.set(recipeId, byLabel);
+  };
   const labels = new Map<string, number>();
   const containers = new Map<string, number>();
   const add = (m: Map<string, number>, k: string, n: number) => m.set(k, (m.get(k) ?? 0) + n);
@@ -150,6 +183,8 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     let portions: Portion[];
     let packaging: Pack[];
     let labelCount: number;
+    let sizeLabel: (p: Portion) => string;
+    let portionCount = o.quantity;
 
     if (item.kind === 'sidePlate') {
       const picks = parseSidePicks(o.variation);
@@ -158,18 +193,23 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
         missing.forEach(p => flag({ kind: 'side', title: o.item, side: p.name }));
         continue;
       }
-      portions = picks.map(p => ({ recipeId: sides.get(normalizeName(p.name))!, oz: item.sideOz * p.count }));
+      // Count each pick as its own side portion so "2x Broccoli" reads as 4 oz ×2.
+      portions = picks.flatMap(p =>
+        Array.from({ length: p.count }, () => ({ recipeId: sides.get(normalizeName(p.name))!, oz: item.sideOz })));
       packaging = item.packaging;
       labelCount = item.labels;
+      sizeLabel = p => `${p.oz} oz`;
     } else {
       const key = sizeKey(o.variation, item.sizes);
       if (!key) { flag({ kind: 'size', title: o.item, variation: o.variation }); continue; }
       ({ portions, packaging, labels: labelCount } = item.sizes[key]!);
+      sizeLabel = key.startsWith('family') ? () => 'Family' : p => `${p.oz} oz`;
     }
 
     for (const p of portions) {
       add(shopOz, p.recipeId, p.oz * o.quantity);
       add(prepOz, p.recipeId, p.oz * o.remaining);
+      countPortion(p.recipeId, sizeLabel(p), p.oz, portionCount);
     }
     for (const pk of packaging) add(containers, pk.container, pk.qty * o.quantity);
     add(labels, item.titles[0] ?? o.item, labelCount * o.quantity);
@@ -177,6 +217,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
 
   // Finished oz per recipe → as-purchased oz per ingredient.
   const buyOz = new Map<string, number>();
+  const recipeBuy = new Map<string, Map<string, number>>(); // recipeId → ingredientId → oz
   for (const [recipeId, needOz] of shopOz) {
     const recipe = recipes.get(recipeId);
     if (!recipe) { flag({ kind: 'recipe', recipeId }); continue; }
@@ -191,23 +232,36 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     const batch = finishedBatchOz(recipe, ingredients);
     if (batch <= 0) { flag({ kind: 'recipe', recipeId }); continue; }
     const multiplier = needOz / batch;
+    const mine = new Map<string, number>();
     for (const l of recipe.lines) {
       const ing = ingredients.get(l.ingredientId!)!;
-      add(buyOz, ing.id, l.oz! * multiplier * (1 + (ing.buffer ?? 0)));
+      const oz = l.oz! * multiplier * (1 + (ing.buffer ?? 0));
+      add(buyOz, ing.id, oz);
+      add(mine, ing.id, oz);
     }
+    recipeBuy.set(recipeId, mine);
   }
 
-  const shoppingList: ShoppingLine[] = [...buyOz]
-    .map(([id, oz]) => {
-      const ing = ingredients.get(id)!;
-      const line: ShoppingLine = { ingredientId: id, name: ing.name, oz: round2(oz), lb: round2(oz / 16) };
-      if (ing.purchase) {
-        // Tolerance so float noise (e.g. 2.0000001) doesn't add a package.
-        line.packages = { count: Math.ceil(oz / ing.purchase.oz - 1e-9), unit: ing.purchase.unit };
-      }
-      return line;
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+  const shoppingList = [...buyOz].map(([id, oz]) => buyLine(ingredients.get(id)!, oz)).sort(byName);
+
+  const components: ComponentLine[] = [...shopOz]
+    .filter(([, oz]) => oz > 0)
+    .map(([recipeId, oz]) => {
+      const recipe = recipes.get(recipeId);
+      return {
+        recipeId,
+        name: recipe?.name ?? recipeId,
+        method: recipe?.method ?? 'unassigned',
+        portions: [...(portionCounts.get(recipeId)?.entries() ?? [])]
+          .map(([key, v]) => ({ label: key.split('|')[0]!, ...v }))
+          .sort((a, b) => a.oz - b.oz),
+        finishedOz: round2(oz),
+        finishedLb: round2(oz / 16),
+        buy: [...(recipeBuy.get(recipeId) ?? [])].map(([id, b]) => buyLine(ingredients.get(id)!, b)).sort(byName),
+      };
     })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort(byName);
 
   const methods = new Map<CookingMethod, PrepLine[]>();
   for (const [recipeId, oz] of prepOz) {
@@ -225,6 +279,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     complete: unresolved.size === 0,
     unresolved: [...unresolved.values()],
     shoppingList,
+    components,
     prepSheet,
     labels: [...labels].map(([title, count]) => ({ title, count })),
     containers: [...containers].map(([container, count]) => ({ container, count })).sort((a, b) => a.container.localeCompare(b.container)),

@@ -31,6 +31,12 @@ th { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-s
 .login { max-width: 360px; padding-top: 15vh; }
 .login form { display: grid; gap: 10px; }
 .login input { padding: 10px; font: inherit; border: 1px solid var(--line); border-radius: 6px; }
+.component { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.component:last-child { border-bottom: 0; }
+.component-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.component-cooked { margin-top: 2px; }
+.component-buy { font-size: 1.35rem; font-weight: 800; color: var(--accent); margin-top: 2px; }
+.buy-name { font-size: 1rem; font-weight: 600; color: var(--text); }
 @media (max-width: 640px) {
   .two-col { grid-template-columns: 1fr; }
   .email { display: none; }
