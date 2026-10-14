@@ -5,14 +5,14 @@ import { normalizeName } from '../core/hotplate';
 import type { Catalog, CookingMethod, MenuItem, Pack, Size } from '../core/planner';
 
 export type CatalogRows = {
-  ingredients: { id: string; name: string; yield: number; yield_source: 'usda' | 'kitchen'; buffer: number; purchase_unit: string | null; purchase_oz: number | null }[];
-  kitchen_recipes: { id: string; name: string; method: CookingMethod | null; finished_oz: number | null }[];
+  ingredients: { id: string; name: string; yield: number; yield_source: 'usda' | 'kitchen' | 'estimate'; buffer: number; purchase_unit: string | null; purchase_oz: number | null }[];
+  kitchen_recipes: { id: string; name: string; method: CookingMethod | null; finished_oz: number | null; oz_per_piece?: number | null }[];
   recipe_lines: { recipe_id: string; ingredient_id: string | null; sub_recipe_id: string | null; raw_name: string; oz: number | null; position: number }[];
   container_types: { id: string; name: string; cost_only: boolean }[];
-  menu_items: { id: string; name: string; kind: 'meal' | 'sidePlate'; side_oz: number | null }[];
+  menu_items: { id: string; name: string; kind: 'meal' | 'sidePlate' | 'prepOnly'; side_oz: number | null }[];
   menu_titles: { menu_item_id: string; title: string }[];
   menu_sizes: { id: string; menu_item_id: string; variation: string; labels: number }[];
-  size_portions: { size_id: string; recipe_id: string; oz: number }[];
+  size_portions: { size_id: string; recipe_id: string; oz: number | null; pieces?: number | null }[];
   size_packaging: { size_id: string; container_id: string; qty: number }[];
   side_links: { side_name: string; recipe_id: string }[];
 };
@@ -42,6 +42,10 @@ export function rowsToCatalog(rows: CatalogRows): Catalog {
   const menu: MenuItem[] = rows.menu_items.map(m => {
     const titles = [m.name, ...(titlesByItem.get(m.id) ?? []).map(t => t.title)];
     const sizes = sizesByItem.get(m.id) ?? [];
+    if (m.kind === 'prepOnly') {
+      const s = sizes.find(s => normalizeName(s.variation) === 'regular') ?? sizes[0];
+      return { id: m.id, titles, kind: 'prepOnly', packaging: s ? packaging(s.id) : [], labels: s?.labels ?? 1 };
+    }
     if (m.kind === 'sidePlate') {
       const s = sizes.find(s => normalizeName(s.variation) === 'regular') ?? sizes[0];
       return { id: m.id, titles, kind: 'sidePlate', sideOz: num(m.side_oz) ?? 4, packaging: s ? packaging(s.id) : [], labels: s?.labels ?? 1 };
@@ -49,7 +53,8 @@ export function rowsToCatalog(rows: CatalogRows): Catalog {
     const bySize: Record<string, Size> = {};
     for (const s of sizes) {
       bySize[normalizeName(s.variation)] = {
-        portions: (portionsBySize.get(s.id) ?? []).map(p => ({ recipeId: p.recipe_id, oz: Number(p.oz) })),
+        portions: (portionsBySize.get(s.id) ?? []).map(p =>
+          p.pieces ? { recipeId: p.recipe_id, pieces: Number(p.pieces) } : { recipeId: p.recipe_id, oz: Number(p.oz) }),
         packaging: packaging(s.id),
         labels: s.labels,
       };
@@ -71,6 +76,7 @@ export function rowsToCatalog(rows: CatalogRows): Catalog {
       name: r.name,
       method: r.method ?? 'unassigned',
       ...(r.finished_oz ? { finishedOz: Number(r.finished_oz) } : {}),
+      ...(r.oz_per_piece ? { ozPerPiece: Number(r.oz_per_piece) } : {}),
       lines: (linesByRecipe.get(r.id) ?? [])
         .sort((a, b) => a.position - b.position)
         .map(l => ({

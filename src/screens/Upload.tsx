@@ -17,6 +17,7 @@ function describe(u: Unresolved, recipeName: (id: string) => string): string {
     case 'recipe': return `Recipe missing or has no finished weight: ${recipeName(u.recipeId)}`;
     case 'ingredient': return `${recipeName(u.recipeId)}: “${u.ingredient}” not linked to a library ingredient`;
     case 'weight': return `${recipeName(u.recipeId)}: “${u.ingredient}” has no weight (needs weight per cup)`;
+    case 'pieces': return `${recipeName(u.recipeId)}: portion is in pieces but no weight per piece is set`;
     case 'cycle': return `${recipeName(u.recipeId)} is used inside itself (recipe loop)`;
   }
 }
@@ -165,6 +166,7 @@ export function Upload({ catalog }: { catalog: Catalog }) {
                         <td>
                           {i.name}
                           {i.raw && <div className="raw">from {i.raw.lb.toFixed(2)} lb raw {i.raw.name}</div>}
+                          {i.pieces && <div className="raw">plate {i.pieces} pieces</div>}
                         </td>
                         <td className="num">{i.finishedLb.toFixed(2)} lb</td>
                       </tr>,
@@ -183,6 +185,25 @@ export function Upload({ catalog }: { catalog: Catalog }) {
               </div>
             ))}
           </section>
+
+          {r.prepOnly.length > 0 && (
+            <section className="card">
+              <h3>Bakery (prep only)</h3>
+              <p className="muted">Still to make (Remaining). Not on the shopping list.</p>
+              <table><tbody>
+                {r.prepOnly.map(b => {
+                  const id = `bake:${b.title}|${b.variation}`;
+                  return (
+                    <tr key={id} className={done.has(id) ? 'done' : ''}>
+                      {check(id, `${b.title} ${b.variation}`)}
+                      <td>{b.title}{b.variation && <div className="raw">{b.variation}</div>}</td>
+                      <td className="num">{b.count}</td>
+                    </tr>
+                  );
+                })}
+              </tbody></table>
+            </section>
+          )}
 
           <div className="two-col">
             <section className="card">

@@ -13,7 +13,8 @@ export type Ingredient = {
   name: string;
   /** As-purchased → plate-ready, all loss included (trim, peel, breakdown, cooking). 0.5 = 50%. Can exceed 1 (pasta, grits). */
   yield: number;
-  yieldSource: 'usda' | 'kitchen';
+  /** usda = Handbook 102, kitchen = measured here, estimate = a placeholder until one of those exists. */
+  yieldSource: 'usda' | 'kitchen' | 'estimate';
   /** Extra safety margin for unpredictable items. 0.1 = 10%. */
   buffer?: number;
   /** How it's bought, e.g. { unit: 'rack', oz: 52 } or { unit: '2 lb bag', oz: 32 }. Absent = pounds. */
@@ -33,12 +34,14 @@ export type Recipe = {
   lines: RecipeLine[];
   /** Measured finished batch weight. Absent = estimated from ingredient yields. */
   finishedOz?: number;
+  /** Finished oz of one piece, for portions counted in pieces (9 shrimp, 2 cracker packs). */
+  ozPerPiece?: number;
 };
 
 export type RecipeLine = { ingredientId: string | null; recipeId?: string; name?: string; oz: number | null };
 
 /** Finished (plate-ready) oz of a recipe in one order. Cups use actual fill, not cup size. */
-export type Portion = { recipeId: string; oz: number };
+export type Portion = { recipeId: string; oz: number; pieces?: undefined } | { recipeId: string; pieces: number; oz?: undefined };
 export type Pack = { container: string; qty: number };
 export type Size = { portions: Portion[]; packaging: Pack[]; labels: number };
 
@@ -56,6 +59,12 @@ export type MenuItem = {
       kind: 'sidePlate';
       /** Finished oz per side pick. */
       sideOz: number;
+      packaging: Pack[];
+      labels: number;
+    }
+  | {
+      /** Made but not shopped for here (Artisan Sweets): counted by variation on the prep list only. */
+      kind: 'prepOnly';
       packaging: Pack[];
       labels: number;
     }
@@ -79,7 +88,9 @@ export type Unresolved =
   /** Line amount has no weight yet, e.g. cups of an ingredient with no grams-per-cup. */
   | { kind: 'weight'; recipeId: string; ingredient: string }
   /** Recipes that use each other in a loop (A uses B uses A). */
-  | { kind: 'cycle'; recipeId: string };
+  | { kind: 'cycle'; recipeId: string }
+  /** Portion counted in pieces but the recipe has no weight per piece. */
+  | { kind: 'pieces'; recipeId: string };
 
 export type ShoppingLine = {
   ingredientId: string;
@@ -101,6 +112,8 @@ export type PrepLine = {
   usedIn?: { recipeId?: string; name: string; lb: number }[];
   /** Raw weight to peel/trim when one ingredient is most of the recipe, e.g. 15 lb raw potatoes → 12 lb boiled. */
   raw?: { name: string; lb: number };
+  /** Pieces to plate, for portions counted in pieces (part of finishedLb). */
+  pieces?: number;
 };
 
 /** Per-component totals for everything sold: portion counts → finished weight → what to buy. */
@@ -124,6 +137,8 @@ export type Plan = {
   prepSheet: { method: CookingMethod; items: PrepLine[] }[];
   labels: { title: string; count: number }[];
   containers: { container: string; count: number }[];
+  /** Prep-only items (Artisan Sweets) still to make, by variation. */
+  prepOnly: { title: string; variation: string; count: number }[];
 };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -191,6 +206,8 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     portionCounts.set(recipeId, byLabel);
   };
   const labels = new Map<string, number>();
+  const prepPieces = new Map<string, number>(); // recipeId → pieces still to plate
+  const prepOnlyCounts = new Map<string, number>(); // JSON [title, variation] → count
   const containers = new Map<string, number>();
   const add = (m: Map<string, number>, k: string, n: number) => m.set(k, (m.get(k) ?? 0) + n);
 
@@ -203,6 +220,13 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     let labelCount: number;
     let sizeLabel: (p: Portion) => string;
     let portionCount = o.quantity;
+
+    if (item.kind === 'prepOnly') {
+      if (o.remaining > 0) add(prepOnlyCounts, JSON.stringify([item.titles[0] ?? o.item, o.variation]), o.remaining);
+      for (const pk of item.packaging) add(containers, pk.container, pk.qty * o.quantity);
+      add(labels, item.titles[0] ?? o.item, item.labels * o.quantity);
+      continue;
+    }
 
     if (item.kind === 'sidePlate') {
       const picks = parseSidePicks(o.variation);
@@ -221,13 +245,20 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
       const key = sizeKey(o.variation, item.sizes);
       if (!key) { flag({ kind: 'size', title: o.item, variation: o.variation }); continue; }
       ({ portions, packaging, labels: labelCount } = item.sizes[key]!);
-      sizeLabel = key.startsWith('family') ? () => 'Family' : p => `${p.oz} oz`;
+      sizeLabel = key.startsWith('family') ? () => 'Family' : p => (p.pieces ? `${p.pieces} pcs` : `${p.oz} oz`);
     }
 
     for (const p of portions) {
-      add(shopOz, p.recipeId, p.oz * o.quantity);
-      add(prepOz, p.recipeId, p.oz * o.remaining);
-      countPortion(p.recipeId, sizeLabel(p), p.oz, portionCount);
+      let oz = p.oz;
+      if (p.pieces !== undefined) {
+        const per = recipes.get(p.recipeId)?.ozPerPiece;
+        if (!per) { flag({ kind: 'pieces', recipeId: p.recipeId }); continue; }
+        oz = p.pieces * per;
+        add(prepPieces, p.recipeId, p.pieces * o.remaining);
+      }
+      add(shopOz, p.recipeId, oz! * o.quantity);
+      add(prepOz, p.recipeId, oz! * o.remaining);
+      countPortion(p.recipeId, sizeLabel(p), oz!, portionCount);
     }
     for (const pk of packaging) add(containers, pk.container, pk.qty * o.quantity);
     add(labels, item.titles[0] ?? o.item, labelCount * o.quantity);
@@ -344,6 +375,8 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     const line: PrepLine = { recipeId, name: recipe.name, finishedLb: round2(oz / 16) };
     const raw = mainRawIngredient(recipe, oz);
     if (raw) line.raw = raw;
+    const pieces = prepPieces.get(recipeId);
+    if (pieces) line.pieces = pieces;
     const parents = prep.usedIn.get(recipeId);
     if (parents) {
       const plated = prepOz.get(recipeId) ?? 0;
@@ -367,5 +400,8 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     prepSheet,
     labels: [...labels].map(([title, count]) => ({ title, count })),
     containers: [...containers].map(([container, count]) => ({ container, count })).sort((a, b) => a.container.localeCompare(b.container)),
+    prepOnly: [...prepOnlyCounts]
+      .map(([k, count]) => { const [title, variation] = JSON.parse(k) as [string, string]; return { title, variation, count }; })
+      .sort((a, b) => a.title.localeCompare(b.title) || a.variation.localeCompare(b.variation)),
   };
 }
