@@ -24,6 +24,9 @@ function describe(u: Unresolved, recipeName: (id: string) => string): string {
 
 const fmtOz = (oz: number) => `${Number.isInteger(oz) ? oz : oz.toFixed(1)} oz`;
 
+/** Under a pound reads better in ounces (garlic 0.2 oz, not 0.01 lb). */
+const weight = (oz: number) => (oz < 16 ? `${oz < 1 ? oz.toFixed(2) : oz.toFixed(1)} oz` : `${(oz / 16).toFixed(2)} lb`);
+
 const dates = (orders: OrderLine[]) =>
   [...new Set(orders.map(o => o.windowStart.slice(0, 10)).filter(Boolean))].sort();
 
@@ -138,12 +141,12 @@ export function Upload({ catalog }: { catalog: Catalog }) {
             <p className="muted">As-purchased weight for every meal sold (Quantity), after yield loss and buffer.</p>
             {r.shoppingList.length === 0 ? <p className="muted">Nothing yet.</p> : (
               <table>
-                <thead><tr><th>Ingredient</th><th className="num">Lb</th><th className="num">Buy</th></tr></thead>
+                <thead><tr><th>Ingredient</th><th className="num">Amount</th><th className="num">Buy</th></tr></thead>
                 <tbody>
                   {r.shoppingList.map(l => (
                     <tr key={l.ingredientId}>
                       <td>{l.name}</td>
-                      <td className="num">{l.lb.toFixed(2)}</td>
+                      <td className="num">{weight(l.oz)}</td>
                       <td className="num">{l.packages ? `${l.packages.count} × ${l.packages.unit}` : '—'}</td>
                     </tr>
                   ))}
