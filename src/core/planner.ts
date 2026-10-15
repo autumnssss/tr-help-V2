@@ -4,7 +4,7 @@
 import { normalizeName, parseSidePicks, type OrderLine } from './hotplate';
 
 export type CookingMethod =
-  | 'smoke' | 'braise' | 'boil' | 'grill' | 'roast' | 'saute' | 'bake' | 'no-cook'
+  | 'smoke' | 'braise' | 'boil' | 'simmer' | 'grill' | 'roast' | 'saute' | 'bake' | 'no-cook'
   /** Not set yet (e.g. imported from V1). Shows as its own prep-sheet group. */
   | 'unassigned';
 
@@ -40,7 +40,14 @@ export type Recipe = {
   finishedOz?: number;
   /** Finished oz of one piece, for portions counted in pieces (9 shrimp, 2 cracker packs). */
   ozPerPiece?: number;
+  /** Groups lines within a station that share a pot or water, e.g. 'Salted water'. */
+  prepGroup?: string;
+  /** False for things mixed into another dish on the spot (broth from base): no prep line of its own. */
+  onPrepSheet?: boolean;
 };
+
+/** Stations in the order the prep sheet shows them. */
+export const STATION_ORDER: CookingMethod[] = ['smoke', 'bake', 'roast', 'braise', 'boil', 'simmer', 'saute', 'grill', 'no-cook', 'unassigned'];
 
 export type RecipeLine = { ingredientId: string | null; recipeId?: string; name?: string; oz: number | null };
 
@@ -122,6 +129,8 @@ export type PrepLine = {
   raw?: { name: string; lb: number };
   /** Pieces to plate, for portions counted in pieces (part of finishedLb). */
   pieces?: number;
+  /** Shared pot or water within the station (Recipe.prepGroup). */
+  group?: string;
 };
 
 /** Per-component totals for everything sold: portion counts → finished weight → what to buy. */
@@ -386,13 +395,14 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
   const methods = new Map<CookingMethod, PrepLine[]>();
   for (const [recipeId, oz] of prep.total) {
     const recipe = recipes.get(recipeId);
-    if (!recipe || oz <= 0 || nested.has(recipeId)) continue;
+    if (!recipe || oz <= 0 || nested.has(recipeId) || recipe.onPrepSheet === false) continue;
     const list = methods.get(recipe.method) ?? [];
     const line: PrepLine = { recipeId, name: recipe.name, finishedLb: round2(oz / 16) };
     const raw = mainRawIngredient(recipe, oz);
     if (raw) line.raw = raw;
     const pieces = prepPieces.get(recipeId);
     if (pieces) line.pieces = pieces;
+    if (recipe.prepGroup) line.group = recipe.prepGroup;
     const parents = prep.usedIn.get(recipeId);
     if (parents) {
       const plated = prepOz.get(recipeId) ?? 0;
@@ -405,8 +415,12 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     methods.set(recipe.method, list);
   }
   const prepSheet = [...methods]
-    .map(([method, items]) => ({ method, items: items.sort((a, b) => a.name.localeCompare(b.name)) }))
-    .sort((a, b) => a.method.localeCompare(b.method));
+    // Grouped lines first (by group), then the rest, each by name.
+    .map(([method, items]) => ({
+      method,
+      items: items.sort((a, b) => (a.group ? 0 : 1) - (b.group ? 0 : 1) || (a.group ?? '').localeCompare(b.group ?? '') || a.name.localeCompare(b.name)),
+    }))
+    .sort((a, b) => STATION_ORDER.indexOf(a.method) - STATION_ORDER.indexOf(b.method));
 
   return {
     complete: unresolved.size === 0,

@@ -65,3 +65,33 @@ describe('recipes inside recipes', () => {
     expect(plan([order('Loop', 1)], loop).unresolved).toContainEqual({ kind: 'cycle', recipeId: 'a' });
   });
 });
+
+describe('stations, pots and mixed-in recipes', () => {
+  it('orders stations, groups shared pots first, and hides recipes mixed in on the spot', () => {
+    const c: Catalog = {
+      ingredients: [
+        { id: 'potatoes', name: 'potatoes', yield: 1, yieldSource: 'estimate' },
+        { id: 'beans', name: 'green beans', yield: 1, yieldSource: 'estimate' },
+        { id: 'rice', name: 'rice', yield: 3, yieldSource: 'estimate' },
+        { id: 'water', name: 'Water', yield: 1, yieldSource: 'kitchen', staple: true },
+      ],
+      recipes: [
+        { id: 'boiled', name: 'Boiled Potatoes', method: 'boil', prepGroup: 'Salted water', lines: [{ ingredientId: 'potatoes', oz: 16 }] },
+        { id: 'gb', name: 'Green Beans', method: 'boil', prepGroup: 'Salted water', lines: [{ ingredientId: 'beans', oz: 16 }] },
+        { id: 'cr', name: 'Cooked Rice', method: 'boil', prepGroup: 'Rice', lines: [{ ingredientId: 'rice', oz: 16 }] },
+        { id: 'broth', name: 'Chicken Broth', method: 'no-cook', onPrepSheet: false, lines: [{ ingredientId: 'water', oz: 8 }] },
+        { id: 'soup', name: 'Soup', method: 'simmer', lines: [{ ingredientId: null, recipeId: 'broth', oz: 8 }] },
+        { id: 'roast', name: 'Roast', method: 'smoke', lines: [{ ingredientId: 'potatoes', oz: 16 }] },
+      ],
+      menu: [one('Plate', 'boiled', 4), one('Beans', 'gb', 4), one('Rice', 'cr', 4), one('Soup', 'soup', 16), one('Roast', 'roast', 4)],
+      sides: {},
+    };
+    const p = plan([order('Plate', 1), order('Beans', 1), order('Rice', 1), order('Soup', 1), order('Roast', 1)], c);
+    expect(p.prepSheet.map(g => [g.method, g.items.map(i => `${i.group ?? '-'}:${i.name}`)])).toEqual([
+      ['smoke', ['-:Roast']],
+      ['boil', ['Rice:Cooked Rice', 'Salted water:Boiled Potatoes', 'Salted water:Green Beans']],
+      ['simmer', ['-:Soup']], // broth mixed in on the spot: no line of its own
+    ]);
+    expect(p.pantry.map(l => l.name)).toEqual(['Water']);
+  });
+});

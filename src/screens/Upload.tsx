@@ -5,7 +5,7 @@ import { plan, type Catalog, type Plan, type ShoppingLine, type Unresolved } fro
 type Loaded = { fileName: string; orders: OrderLine[]; result: Plan };
 
 const METHOD_LABEL: Record<string, string> = {
-  smoke: 'Smoke', braise: 'Braise', boil: 'Boil', grill: 'Grill', roast: 'Roast',
+  smoke: 'Smoke', braise: 'Braise', boil: 'Boil', simmer: 'Simmer', grill: 'Grill', roast: 'Roast',
   saute: 'Sauté', bake: 'Bake', 'no-cook': 'No-cook', unassigned: 'Cooking method not set',
 };
 
@@ -172,26 +172,36 @@ export function Upload({ catalog }: { catalog: Catalog }) {
                 <h4>{METHOD_LABEL[g.method] ?? g.method}</h4>
                 <table>
                   <tbody>
-                    {g.items.flatMap(i => [
-                      <tr key={i.recipeId} className={done.has(i.recipeId) ? 'done' : ''}>
-                        {check(i.recipeId, i.name)}
-                        <td>
-                          {i.name}
-                          {i.raw && <div className="raw">from {i.raw.lb.toFixed(2)} lb raw {i.raw.name}</div>}
-                          {i.pieces && <div className="raw">plate {i.pieces} pieces</div>}
-                        </td>
-                        <td className="num">{i.finishedLb.toFixed(2)} lb</td>
-                      </tr>,
-                      ...(i.usedIn ?? []).map(u => {
-                        const id = `${i.recipeId}>${u.recipeId ?? 'plated'}`;
-                        return (
-                          <tr key={id} className={`used-in${done.has(id) ? ' done' : ''}`}>
-                            <td className="check" />
-                            <td><span className="nest">{check(id, `${i.name} for ${u.name}`, true)}{u.name}</span></td><td className="num">{u.lb.toFixed(2)} lb</td>
-                          </tr>
-                        );
-                      }),
-                    ])}
+                    {g.items.flatMap((i, n) => {
+                      const header = i.group && i.group !== g.items[n - 1]?.group
+                        ? [<tr key={`grp:${i.group}`} className="pot"><td colSpan={3}>{i.group}</td></tr>] : [];
+                      // A base recipe reads as the raw ingredient going into the pot.
+                      const base = i.raw && i.usedIn;
+                      const single = base && i.usedIn!.length === 1 ? i.usedIn![0]! : undefined;
+                      const title = base ? `${i.raw!.name} — ${i.raw!.lb.toFixed(2)} lb raw` : i.name;
+                      const rows = [
+                        <tr key={i.recipeId} className={done.has(i.recipeId) ? 'done' : ''}>
+                          {check(i.recipeId, title)}
+                          <td>
+                            {title}
+                            {single && <div className="raw">for {single.name}</div>}
+                            {!base && i.raw && <div className="raw">from {i.raw.lb.toFixed(2)} lb raw {i.raw.name}</div>}
+                            {i.pieces && <div className="raw">plate {i.pieces} pieces</div>}
+                          </td>
+                          <td className="num">{base ? '→ ' : ''}{i.finishedLb.toFixed(2)} lb</td>
+                        </tr>,
+                        ...(single ? [] : (i.usedIn ?? []).map(u => {
+                          const id = `${i.recipeId}>${u.recipeId ?? 'plated'}`;
+                          return (
+                            <tr key={id} className={`used-in${done.has(id) ? ' done' : ''}`}>
+                              <td className="check" />
+                              <td><span className="nest">{check(id, `${i.name} for ${u.name}`, true)}for {u.name}</span></td><td className="num">{u.lb.toFixed(2)} lb</td>
+                            </tr>
+                          );
+                        })),
+                      ];
+                      return [...header, ...rows];
+                    })}
                   </tbody>
                 </table>
               </div>
