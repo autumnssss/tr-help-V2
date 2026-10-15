@@ -64,3 +64,33 @@ describe('side plates with no sides listed', () => {
       .toEqual([{ kind: 'side', title: 'Garden Vegetables and sides - Menu A', side: '(no sides listed)' }]);
   });
 });
+
+describe('staples', () => {
+  it('stay off the shopping list but show under pantry; counted items read as a count', () => {
+    const c: Catalog = {
+      ingredients: [
+        { id: 'eggs', name: 'Eggs', yield: 0.88, yieldSource: 'estimate', purchase: { unit: 'eggs', oz: 1.75 } },
+        { id: 'salt', name: 'Kosher salt', yield: 1, yieldSource: 'estimate', staple: true },
+      ],
+      recipes: [{ id: 'm', name: 'Meatloaf', method: 'bake', lines: [{ ingredientId: 'eggs', oz: 3.5 }, { ingredientId: 'salt', oz: 0.25 }] }],
+      menu: [{ id: 'ml', titles: ['Meatloaf'], kind: 'meal', sizes: { regular: { portions: [{ recipeId: 'm', oz: 4 }], packaging: [], labels: 1 } } }],
+      sides: {},
+    };
+    const p = plan([order('Meatloaf', 12)], c); // 48 oz ÷ 3.33 oz batch = 14.4 batches × 2 eggs = 28.8 → 29
+    expect(p.shoppingList.map(l => [l.name, l.packages])).toEqual([['Eggs', { count: 29, unit: 'eggs' }]]);
+    expect(p.pantry.map(l => l.name)).toEqual(['Kosher salt']);
+  });
+});
+
+describe('shopping list order', () => {
+  it('groups by store section in walking order, then by name', () => {
+    const ing = (id: string, category: string) => ({ id, name: id, yield: 1, yieldSource: 'estimate' as const, category });
+    const c: Catalog = {
+      ingredients: [ing('shrimp', 'Meat & Seafood'), ing('broth', 'Canned & Dry'), ing('chicken breast', 'Meat & Seafood'), ing('onion', 'Produce')],
+      recipes: [{ id: 'r', name: 'r', method: 'saute', lines: ['shrimp', 'broth', 'chicken breast', 'onion'].map(i => ({ ingredientId: i, oz: 1 })) }],
+      menu: [{ id: 'm', titles: ['M'], kind: 'meal', sizes: { regular: { portions: [{ recipeId: 'r', oz: 4 }], packaging: [], labels: 1 } } }],
+      sides: {},
+    };
+    expect(plan([order('M', 1)], c).shoppingList.map(l => l.name)).toEqual(['onion', 'chicken breast', 'shrimp', 'broth']);
+  });
+});

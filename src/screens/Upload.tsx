@@ -1,6 +1,6 @@
 import { useState, type DragEvent } from 'react';
 import { parseHotplateCsv, type OrderLine } from '../core/hotplate';
-import { plan, type Catalog, type Plan, type Unresolved } from '../core/planner';
+import { plan, type Catalog, type Plan, type ShoppingLine, type Unresolved } from '../core/planner';
 
 type Loaded = { fileName: string; orders: OrderLine[]; result: Plan };
 
@@ -23,6 +23,9 @@ function describe(u: Unresolved, recipeName: (id: string) => string): string {
 }
 
 const fmtOz = (oz: number) => `${Number.isInteger(oz) ? oz : oz.toFixed(1)} oz`;
+
+/** Counted items read as a count ("7 eggs", "3 packs"); everything else as weight. */
+const amount = (l: ShoppingLine) => (l.packages ? `${l.packages.count} ${l.packages.unit}` : weight(l.oz));
 
 /** Under a pound reads better in ounces (garlic 0.2 oz, not 0.01 lb). */
 const weight = (oz: number) => (oz < 16 ? `${oz < 1 ? oz.toFixed(2) : oz.toFixed(1)} oz` : `${(oz / 16).toFixed(2)} lb`);
@@ -115,25 +118,20 @@ export function Upload({ catalog }: { catalog: Catalog }) {
 
           <section className="card">
             <h3>Totals by item</h3>
-            <p className="muted">Every portion sold (Quantity) → cooked weight → what to buy.</p>
-            {r.components.length === 0 ? <p className="muted">Nothing yet.</p> : r.components.map(c => (
-              <div key={c.recipeId} className="component">
-                <div className="component-head">
-                  <strong>{c.name}</strong>
-                  <span className="muted">{c.portions.map(p => `${p.label} ×${p.count}`).join(' · ')}</span>
-                </div>
-                <div className="component-cooked">= {fmtOz(c.finishedOz)} cooked ({c.finishedLb.toFixed(2)} lb)</div>
-                {c.buy.length === 0
-                  ? <div className="muted">Buy amount: recipe not fully set up yet</div>
-                  : c.buy.map(b => (
-                    <div key={b.ingredientId} className="component-buy">
-                      Buy {b.packages ? `${b.packages.count} × ${b.packages.unit}` : `${b.lb.toFixed(2)} lb`}
-                      {c.buy.length > 1 || b.name !== c.name ? <span className="buy-name"> {b.name}</span> : null}
-                      {b.packages && <span className="muted"> ({b.lb.toFixed(2)} lb)</span>}
-                    </div>
-                  ))}
-              </div>
-            ))}
+            <p className="muted">Every portion sold (Quantity) × how many = total cooked weight.</p>
+            {r.components.filter(c => c.portions.length).length === 0 ? <p className="muted">Nothing yet.</p> : (
+              <table><tbody>
+                {r.components.filter(c => c.portions.length).map(c => (
+                  <tr key={c.recipeId}>
+                    <td>
+                      <strong>{c.name}</strong>
+                      <div className="raw">{c.portions.map(p => `${p.label} × ${p.count}`).join(' + ')}</div>
+                    </td>
+                    <td className="num">{weight(c.finishedOz)}</td>
+                  </tr>
+                ))}
+              </tbody></table>
+            )}
           </section>
 
           <section className="card">
@@ -141,17 +139,28 @@ export function Upload({ catalog }: { catalog: Catalog }) {
             <p className="muted">As-purchased weight for every meal sold (Quantity), after yield loss and buffer.</p>
             {r.shoppingList.length === 0 ? <p className="muted">Nothing yet.</p> : (
               <table>
-                <thead><tr><th>Ingredient</th><th className="num">Amount</th><th className="num">Buy</th></tr></thead>
+                <thead><tr><th>Ingredient</th><th className="num">Amount</th></tr></thead>
                 <tbody>
-                  {r.shoppingList.map(l => (
+                  {r.shoppingList.flatMap((l, i) => [
+                    ...(i === 0 || r.shoppingList[i - 1]!.category !== l.category
+                      ? [<tr key={`cat:${l.category}`} className="aisle"><td colSpan={2}>{l.category}</td></tr>] : []),
                     <tr key={l.ingredientId}>
                       <td>{l.name}</td>
-                      <td className="num">{weight(l.oz)}</td>
-                      <td className="num">{l.packages ? `${l.packages.count} × ${l.packages.unit}` : '—'}</td>
-                    </tr>
-                  ))}
+                      <td className="num">{amount(l)}</td>
+                    </tr>,
+                  ])}
                 </tbody>
               </table>
+            )}
+            {r.pantry.length > 0 && (
+              <details className="pantry">
+                <summary>From the pantry ({r.pantry.length}) — not on the list, check stock</summary>
+                <table><tbody>
+                  {r.pantry.map(l => (
+                    <tr key={l.ingredientId}><td>{l.name}</td><td className="num">{amount(l)}</td></tr>
+                  ))}
+                </tbody></table>
+              </details>
             )}
           </section>
 

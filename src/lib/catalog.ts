@@ -5,7 +5,7 @@ import { normalizeName } from '../core/hotplate';
 import type { Catalog, CookingMethod, MenuItem, Pack, Size } from '../core/planner';
 
 export type CatalogRows = {
-  ingredients: { id: string; name: string; yield: number; yield_source: 'usda' | 'kitchen' | 'estimate'; buffer: number; purchase_unit: string | null; purchase_oz: number | null }[];
+  ingredients: { id: string; name: string; yield: number; yield_source: 'usda' | 'kitchen' | 'estimate'; buffer: number; purchase_unit: string | null; purchase_oz: number | null; staple?: boolean; category?: string | null }[];
   kitchen_recipes: { id: string; name: string; method: CookingMethod | null; finished_oz: number | null; oz_per_piece?: number | null }[];
   recipe_lines: { recipe_id: string; ingredient_id: string | null; sub_recipe_id: string | null; raw_name: string; oz: number | null; position: number }[];
   container_types: { id: string; name: string; cost_only: boolean }[];
@@ -70,6 +70,8 @@ export function rowsToCatalog(rows: CatalogRows): Catalog {
       yieldSource: i.yield_source,
       buffer: Number(i.buffer) || 0,
       ...(i.purchase_unit && i.purchase_oz ? { purchase: { unit: i.purchase_unit, oz: Number(i.purchase_oz) } } : {}),
+      ...(i.staple ? { staple: true } : {}),
+      ...(i.category ? { category: i.category } : {}),
     })),
     recipes: rows.kitchen_recipes.map(r => ({
       id: r.id,

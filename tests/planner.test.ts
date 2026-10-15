@@ -212,10 +212,10 @@ describe('plan: per-component totals', () => {
       portions: [
         { label: '4 oz', oz: 4, count: 6 },
         { label: '6 oz', oz: 6, count: 1 },
-        { label: 'Family', oz: 16, count: 2 },
+        { label: 'Family 16 oz', oz: 16, count: 2 },
       ],
       finishedOz: 62, finishedLb: 3.88,
-      buy: [{ ingredientId: 'ribs', name: 'ribs', oz: 124, lb: 7.75 }],
+      buy: [{ ingredientId: 'ribs', name: 'ribs', category: 'Other', oz: 124, lb: 7.75 }],
     }]);
   });
 

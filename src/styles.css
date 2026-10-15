@@ -57,3 +57,7 @@ tr.done td:not(.check) { text-decoration: line-through; color: var(--muted); }
 tr.done .nest { text-decoration: line-through; }
 @media print { tr.done .nest { text-decoration: none; } }
 .raw { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
+.pantry { margin-top: 12px; }
+.pantry summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; padding: 6px 0; }
+@media print { .pantry:not([open]) { display: none; } }
+tr.aisle td { padding-top: 14px; font-size: 0.8rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 2px solid var(--accent-bg); }

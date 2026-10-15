@@ -17,8 +17,12 @@ export type Ingredient = {
   yieldSource: 'usda' | 'kitchen' | 'estimate';
   /** Extra safety margin for unpredictable items. 0.1 = 10%. */
   buffer?: number;
-  /** How it's bought, e.g. { unit: 'rack', oz: 52 } or { unit: '2 lb bag', oz: 32 }. Absent = pounds. */
+  /** Counted, not weighed, on the shopping list: { unit: 'eggs', oz: 1.75 } → "7 eggs". Absent = oz/lb. */
   purchase?: { unit: string; oz: number };
+  /** Always on hand (salt, butter, BBQ sauce): kept off the shopping list, shown under pantry. */
+  staple?: boolean;
+  /** Store section, e.g. 'Produce', 'Meat & Seafood'. Shopping list is grouped in STORE_ORDER. */
+  category?: string;
 };
 
 export type Recipe = {
@@ -92,9 +96,13 @@ export type Unresolved =
   /** Portion counted in pieces but the recipe has no weight per piece. */
   | { kind: 'pieces'; recipeId: string };
 
+/** Shopping list sections in the order you walk the store; anything else goes last. */
+export const STORE_ORDER = ['Produce', 'Meat & Seafood', 'Deli', 'Dairy & Eggs', 'Bakery', 'Frozen', 'Canned & Dry', 'Sauces & Condiments'];
+
 export type ShoppingLine = {
   ingredientId: string;
   name: string;
+  category: string;
   oz: number;
   lb: number;
   /** Whole packages to buy, rounded up. Only when a purchase unit is set. */
@@ -137,6 +145,8 @@ export type Plan = {
   prepSheet: { method: CookingMethod; items: PrepLine[] }[];
   labels: { title: string; count: number }[];
   containers: { container: string; count: number }[];
+  /** Staples this order uses: not on the shopping list, shown so stock can be checked. */
+  pantry: ShoppingLine[];
   /** Prep-only items (Artisan Sweets) still to make, by variation. */
   prepOnly: { title: string; variation: string; count: number }[];
 };
@@ -167,7 +177,7 @@ export function finishedBatchOz(recipe: Recipe, ingredients: Map<string, Ingredi
 }
 
 function buyLine(ing: Ingredient, oz: number): ShoppingLine {
-  const line: ShoppingLine = { ingredientId: ing.id, name: ing.name, oz: round2(oz), lb: round2(oz / 16) };
+  const line: ShoppingLine = { ingredientId: ing.id, name: ing.name, category: ing.category ?? 'Other', oz: round2(oz), lb: round2(oz / 16) };
   if (ing.purchase) {
     // Tolerance so float noise (e.g. 2.0000001) doesn't add a package.
     line.packages = { count: Math.ceil(oz / ing.purchase.oz - 1e-9), unit: ing.purchase.unit };
@@ -246,7 +256,8 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
       const key = sizeKey(o.variation, item.sizes);
       if (!key) { flag({ kind: 'size', title: o.item, variation: o.variation }); continue; }
       ({ portions, packaging, labels: labelCount } = item.sizes[key]!);
-      sizeLabel = key.startsWith('family') ? () => 'Family' : p => (p.pieces ? `${p.pieces} pcs` : `${p.oz} oz`);
+      const each = (p: Portion) => (p.pieces ? `${p.pieces} pcs` : `${p.oz} oz`);
+      sizeLabel = key.startsWith('family') ? p => `Family ${each(p)}` : each;
     }
 
     for (const p of portions) {
@@ -327,7 +338,11 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
   }
 
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
-  const shoppingList = [...buyOz].map(([id, oz]) => buyLine(ingredients.get(id)!, oz)).sort(byName);
+  const aisle = (c: string) => { const i = STORE_ORDER.indexOf(c); return i < 0 ? STORE_ORDER.length : i; };
+  const allBuys = [...buyOz].map(([id, oz]) => buyLine(ingredients.get(id)!, oz))
+    .sort((a, b) => aisle(a.category) - aisle(b.category) || a.category.localeCompare(b.category) || byName(a, b));
+  const shoppingList = allBuys.filter(l => !ingredients.get(l.ingredientId)!.staple);
+  const pantry = allBuys.filter(l => ingredients.get(l.ingredientId)!.staple);
 
   const components: ComponentLine[] = [...shop.total]
     .filter(([, oz]) => oz > 0)
@@ -397,6 +412,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     complete: unresolved.size === 0,
     unresolved: [...unresolved.values()],
     shoppingList,
+    pantry,
     components,
     prepSheet,
     labels: [...labels].map(([title, count]) => ({ title, count })),
