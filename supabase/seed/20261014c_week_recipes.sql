@@ -52,7 +52,7 @@ $$;
 select pg_temp.ingredient(n, y) from (values
   ('Ground beef 80/20', 0.75), ('Eggs', 0.88), ('Worcestershire sauce', 1), ('Oat flour', 1), ('Italian seasoning', 1),
   ('Yellow onion', 0.90), ('Bell peppers', 0.82), ('All-purpose flour', 1), ('Vegetable oil', 1),
-  (('Whole milk', 1), ('Quick grits', 1), ('Sharp cheddar', 1),
+  ('Whole milk', 1), ('Quick grits', 1), ('Sharp cheddar', 1),
   ('Rye bread', 1), ('Garlic powder', 1), ('Corned beef (deli, cooked)', 1), ('Dill pickles', 1),
   ('Thousand Island dressing', 1), ('Swiss cheese slices', 1),
   ('Chicken thighs, boneless skinless', 0.75), ('Cornstarch', 1), ('Soy sauce', 1), ('Honey', 1),
