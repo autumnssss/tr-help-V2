@@ -6,7 +6,7 @@ import type { Catalog, CookingMethod, MenuItem, Pack, Size } from '../core/plann
 
 export type CatalogRows = {
   ingredients: { id: string; name: string; yield: number; yield_source: 'usda' | 'kitchen' | 'estimate'; buffer: number; purchase_unit: string | null; purchase_oz: number | null; staple?: boolean; category?: string | null }[];
-  kitchen_recipes: { id: string; name: string; method: CookingMethod | null; finished_oz: number | null; oz_per_piece?: number | null; prep_group?: string | null; on_prep_sheet?: boolean; steps?: string | null; notes?: string | null }[];
+  kitchen_recipes: { id: string; name: string; method: CookingMethod | null; finished_oz: number | null; oz_per_piece?: number | null; prep_group?: string | null; on_prep_sheet?: boolean; steps?: string | null; notes?: string | null; finished_oz_measured?: boolean }[];
   recipe_lines: { recipe_id: string; ingredient_id: string | null; sub_recipe_id: string | null; raw_name: string; oz: number | null; position: number; amount?: number | null; unit?: string | null }[];
   container_types: { id: string; name: string; cost_only: boolean }[];
   menu_items: { id: string; name: string; kind: 'meal' | 'sidePlate' | 'prepOnly'; side_oz: number | null }[];
@@ -78,6 +78,7 @@ export function rowsToCatalog(rows: CatalogRows): Catalog {
       name: r.name,
       method: r.method ?? 'unassigned',
       ...(r.finished_oz ? { finishedOz: Number(r.finished_oz) } : {}),
+      ...(r.finished_oz_measured ? { finishedOzMeasured: true } : {}),
       ...(r.oz_per_piece ? { ozPerPiece: Number(r.oz_per_piece) } : {}),
       ...(r.prep_group ? { prepGroup: r.prep_group } : {}),
       ...(r.on_prep_sheet === false ? { onPrepSheet: false } : {}),

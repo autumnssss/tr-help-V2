@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Card } from '../components/RecipeCard';
-import { batchOz, defaultServingOz, recipeCard, STATION_ORDER, type Catalog } from '../core/planner';
+import { batchIsEstimate, batchOz, defaultServingOz, recipeCard, STATION_ORDER, type Catalog } from '../core/planner';
 
 const STATION: Record<string, string> = {
   smoke: 'Smoke', bake: 'Bake', roast: 'Roast', braise: 'Braise', boil: 'Boil', simmer: 'Simmer',
@@ -51,7 +51,10 @@ export function Recipes({ catalog }: { catalog: Catalog }) {
                     onChange={e => setServingOz(Math.max(0, Number(e.target.value)))} /> oz each</label>
                 </div>
                 {perBatch > 0
-                  ? <p className="muted">One batch makes about {servingsPerBatch.toFixed(1)} servings of {servingOz} oz.</p>
+                  ? <p className="muted">
+                      One batch makes about {servingsPerBatch.toFixed(1)} servings of {servingOz} oz.
+                      {batchIsEstimate(catalog, r.id) && <span className="estimate"> Estimate — add padding until a batch is weighed.</span>}
+                    </p>
                   : <p className="error">This recipe's cooked batch weight isn't known yet, so it can't be scaled by servings.</p>}
                 {card && <Card card={card} />}
                 {card?.notes && <p className="raw">{card.notes}</p>}

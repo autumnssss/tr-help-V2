@@ -81,3 +81,4 @@ details.items summary { cursor: pointer; font-weight: 600; }
 .scale { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 .scale input { width: 72px; padding: 6px 8px; font: inherit; border: 1px solid var(--line); border-radius: 6px; margin-left: 4px; }
 .steps { white-space: pre-wrap; font-size: 0.9rem; margin-top: 8px; }
+.estimate { color: #a35d00; font-weight: 600; }

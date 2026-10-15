@@ -36,8 +36,10 @@ export type Recipe = {
    * its oz is that recipe's finished weight per batch.
    */
   lines: RecipeLine[];
-  /** Measured finished batch weight. Absent = estimated from ingredient yields. */
+  /** Finished batch weight. Absent = estimated from ingredient yields. */
   finishedOz?: number;
+  /** finishedOz was weighed in this kitchen (not an estimate). */
+  finishedOzMeasured?: boolean;
   /** Finished oz of one piece, for portions counted in pieces (9 shrimp, 2 cracker packs). */
   ozPerPiece?: number;
   /** Groups lines within a station that share a pot or water, e.g. 'Salted water'. */
@@ -276,6 +278,20 @@ export function defaultServingOz(catalog: Catalog, recipeId: string): number {
   const counts = new Map<number, number>();
   for (const oz of pick) counts.set(oz, (counts.get(oz) ?? 0) + 1);
   return [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]![0];
+}
+
+/**
+ * True while a recipe's batch weight rests on estimates: any ingredient yield (or sub-recipe) not
+ * measured in this kitchen, or a finished weight not yet weighed. Pad servings until it's confirmed.
+ */
+export function batchIsEstimate(catalog: Catalog, recipeId: string, seen = new Set<string>()): boolean {
+  const recipe = catalog.recipes.find(r => r.id === recipeId);
+  if (!recipe || seen.has(recipeId)) return true;
+  seen.add(recipeId);
+  if (recipe.finishedOz) return !recipe.finishedOzMeasured;
+  return recipe.lines.some(l => l.recipeId
+    ? batchIsEstimate(catalog, l.recipeId, seen)
+    : catalog.ingredients.find(i => i.id === l.ingredientId)?.yieldSource !== 'kitchen');
 }
 
 /** Cooked oz of one batch, or 0 if not known yet (Recipes screen: "make N lb" → batches). */

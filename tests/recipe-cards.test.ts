@@ -1,5 +1,5 @@
 import type { OrderLine } from '../src/core/hotplate';
-import { batchOz, defaultServingOz, plan, recipeCard, type Catalog } from '../src/core/planner';
+import { batchIsEstimate, batchOz, defaultServingOz, plan, recipeCard, type Catalog } from '../src/core/planner';
 import { formatAmount, toEighths } from '../src/core/units';
 
 const order = (item: string, quantity: number, remaining = quantity): OrderLine =>
@@ -86,5 +86,26 @@ describe('recipes by servings (no order needed)', () => {
     expect(card.batches).toBe(5);
     expect(card.finishedOz).toBe(160);
     expect(card.lines.map(l => formatAmount(l.amount!, l.unit))).toEqual(['15 cups', '40 oz']);
+  });
+});
+
+describe('batch weight estimates', () => {
+  it('is an estimate until every yield is the kitchen’s own or the batch was weighed', () => {
+    const base: Catalog = {
+      ingredients: [
+        { id: 'a', name: 'a', yield: 1, yieldSource: 'kitchen' },
+        { id: 'b', name: 'b', yield: 0.8, yieldSource: 'usda' },
+      ],
+      recipes: [
+        { id: 'measured', name: 'm', method: 'boil', lines: [{ ingredientId: 'a', oz: 1 }] },
+        { id: 'usda', name: 'u', method: 'boil', lines: [{ ingredientId: 'b', oz: 1 }] },
+        { id: 'parent', name: 'p', method: 'boil', lines: [{ ingredientId: null, recipeId: 'usda', oz: 1 }] },
+        { id: 'weighed', name: 'w', method: 'boil', finishedOz: 10, finishedOzMeasured: true, lines: [{ ingredientId: 'b', oz: 1 }] },
+        { id: 'guessed', name: 'g', method: 'boil', finishedOz: 10, lines: [{ ingredientId: 'a', oz: 1 }] },
+      ],
+      menu: [], sides: {},
+    };
+    expect(['measured', 'usda', 'parent', 'weighed', 'guessed'].map(id => batchIsEstimate(base, id)))
+      .toEqual([false, true, true, false, true]);
   });
 });
