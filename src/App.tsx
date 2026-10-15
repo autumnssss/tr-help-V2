@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { Catalog } from './core/planner';
 import { loadCatalog } from './lib/catalog';
+import { uploadHistory } from './lib/history';
 import { configError, db, myKitchen } from './lib/supabase';
 import { Login } from './screens/Login';
 import { Upload } from './screens/Upload';
@@ -10,7 +11,7 @@ type KitchenState =
   | { status: 'loading' }
   | { status: 'none' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; name: string; catalog: Catalog };
+  | { status: 'ready'; id: string; name: string; catalog: Catalog };
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -29,7 +30,7 @@ export function App() {
     (async () => {
       const k = await myKitchen();
       if (!k) return setKitchen({ status: 'none' });
-      setKitchen({ status: 'ready', name: k.name, catalog: await loadCatalog(db, k.id) });
+      setKitchen({ status: 'ready', id: k.id, name: k.name, catalog: await loadCatalog(db, k.id) });
     })().catch(e => setKitchen({ status: 'error', message: e instanceof Error ? e.message : String(e) }));
   }, [userId]);
 
@@ -49,7 +50,7 @@ export function App() {
       {kitchen.status === 'loading' && <main><p className="muted">Loading kitchen…</p></main>}
       {kitchen.status === 'none' && <main><p>Your login isn’t linked to a kitchen yet. Ask the owner to invite this email.</p></main>}
       {kitchen.status === 'error' && <main><p className="error">{kitchen.message}</p></main>}
-      {kitchen.status === 'ready' && <Upload catalog={kitchen.catalog} />}
+      {kitchen.status === 'ready' && <Upload catalog={kitchen.catalog} history={uploadHistory(db, kitchen.id)} />}
     </>
   );
 }

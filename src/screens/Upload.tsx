@@ -1,9 +1,18 @@
-import { useState, type DragEvent } from 'react';
+import { useMemo, useState, type DragEvent } from 'react';
 import { parseHotplateCsv, type OrderLine } from '../core/hotplate';
 import { plan, type Catalog, type Plan, type RecipeCard, type ShoppingLine, type Unresolved } from '../core/planner';
 import { formatAmount, formatOz } from '../core/units';
+import { containsOrders, sameOrders, subtractOrders } from '../core/weeks';
+import { normalizeName } from '../core/hotplate';
 
-type Loaded = { fileName: string; orders: OrderLine[]; result: Plan };
+/** A saved upload, so the next file can take out orders it already counted. */
+export type PastUpload = { fileName: string; uploadedAt: string; lines: OrderLine[] };
+export type UploadHistory = {
+  recent(): Promise<PastUpload[]>;
+  save(fileName: string, lines: OrderLine[]): Promise<void>;
+};
+
+type Loaded = { fileName: string; raw: OrderLine[]; previous?: PastUpload };
 
 const METHOD_LABEL: Record<string, string> = {
   smoke: 'Smoke', braise: 'Braise', boil: 'Boil', simmer: 'Simmer', grill: 'Grill', roast: 'Roast',
@@ -51,19 +60,28 @@ function Card({ card, cards }: { card: RecipeCard; cards: Record<string, RecipeC
 const dates = (orders: OrderLine[]) =>
   [...new Set(orders.map(o => o.windowStart.slice(0, 10)).filter(Boolean))].sort();
 
-export function Upload({ catalog }: { catalog: Catalog }) {
+export function Upload({ catalog, history }: { catalog: Catalog; history?: UploadHistory }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [subtract, setSubtract] = useState(true);
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const itemKey = (item: string) => normalizeName(item);
+  const orders = useMemo(() => {
+    if (!loaded) return [];
+    const base = subtract && loaded.previous ? subtractOrders(loaded.raw, loaded.previous.lines) : loaded.raw;
+    return base.filter(o => !excluded.has(itemKey(o.item)));
+  }, [loaded, subtract, excluded]);
+  const result: Plan | undefined = useMemo(() => (loaded ? plan(orders, catalog) : undefined), [loaded, orders, catalog]);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [openCard, setOpenCard] = useState<string | null>(null);
   const cardToggle = (recipeId: string | undefined) =>
-    recipeId && loaded?.result.recipeCards[recipeId]
+    recipeId && result?.recipeCards[recipeId]
       ? <button className="btn link small no-print" onClick={() => setOpenCard(openCard === recipeId ? null : recipeId)}>{openCard === recipeId ? 'Hide recipe' : 'Recipe'}</button>
       : null;
   const cardRow = (key: string, recipeId: string | undefined) =>
-    recipeId && openCard === recipeId && loaded?.result.recipeCards[recipeId]
-      ? [<tr key={`card:${key}`} className="card-row"><td /><td colSpan={2}><Card card={loaded.result.recipeCards[recipeId]!} cards={loaded.result.recipeCards} /></td></tr>]
+    recipeId && openCard === recipeId && result?.recipeCards[recipeId]
+      ? [<tr key={`card:${key}`} className="card-row"><td /><td colSpan={2}><Card card={result!.recipeCards[recipeId]!} cards={result!.recipeCards} /></td></tr>]
       : [];
 
   // Ticks on the prep sheet survive a refresh on this device, per uploaded file.
@@ -88,9 +106,15 @@ export function Upload({ catalog }: { catalog: Catalog }) {
     if (!file) return;
     setError(null);
     try {
-      const orders = parseHotplateCsv(await file.text());
-      if (!orders.length) throw new Error('That file has no order lines.');
-      setLoaded({ fileName: file.name, orders, result: plan(orders, catalog) });
+      const raw = parseHotplateCsv(await file.text());
+      if (!raw.length) throw new Error('That file has no order lines.');
+      // The most recent earlier upload that this file still contains (Hotplate keeps old weeks in).
+      const recent = history ? await history.recent().catch(() => []) : [];
+      const previous = recent.find(u => !sameOrders(u.lines, raw) && containsOrders(raw, u.lines));
+      if (history && !(recent[0] && sameOrders(recent[0].lines, raw))) await history.save(file.name, raw).catch(() => undefined);
+      setLoaded({ fileName: file.name, raw, ...(previous ? { previous } : {}) });
+      setSubtract(true);
+      setExcluded(new Set());
       setDone(loadDone(file.name));
     } catch (e) {
       setLoaded(null);
@@ -105,9 +129,18 @@ export function Upload({ catalog }: { catalog: Catalog }) {
   };
 
   const recipeName = (id: string) => catalog.recipes.find(r => r.id === id)?.name ?? id;
-  const r = loaded?.result;
+  const r = result;
   const totalLabels = r?.labels.reduce((s, l) => s + l.count, 0) ?? 0;
-  const totalPlates = loaded?.orders.reduce((s, o) => s + o.quantity, 0) ?? 0;
+  const totalPlates = orders.reduce((s, o) => s + o.quantity, 0);
+  const fileItems = loaded
+    ? [...new Map((subtract && loaded.previous ? subtractOrders(loaded.raw, loaded.previous.lines) : loaded.raw)
+        .map(o => [itemKey(o.item), o.item.trim()])).entries()]
+    : [];
+  const toggleItem = (k: string) => {
+    const next = new Set(excluded);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    setExcluded(next);
+  };
 
   return (
     <main>
@@ -130,10 +163,35 @@ export function Upload({ catalog }: { catalog: Catalog }) {
           <section className="summary">
             <h2>{loaded.fileName}</h2>
             <p className="muted">
-              {loaded.orders.length} lines · {totalPlates} meals ordered · order dates {dates(loaded.orders).join(', ')}
+              {orders.length} lines · {totalPlates} items ordered · order dates {dates(orders).join(', ')}
             </p>
             <button className="btn no-print" onClick={() => window.print()}>Print</button>
           </section>
+
+          {loaded.previous && (
+            <section className="card no-print">
+              <label className="toggle">
+                <input type="checkbox" checked={subtract} onChange={e => setSubtract(e.target.checked)} />
+                <span>
+                  <strong>Leave out last upload's orders</strong>
+                  <div className="raw">
+                    This file still has everything from “{loaded.previous.fileName}”
+                    ({new Date(loaded.previous.uploadedAt).toLocaleDateString()}). Hotplate keeps earlier weeks in the prep list.
+                  </div>
+                </span>
+              </label>
+            </section>
+          )}
+
+          <details className="card no-print items">
+            <summary>Items in this file ({fileItems.length - [...excluded].filter(k => fileItems.some(([fk]) => fk === k)).length} of {fileItems.length} counted)</summary>
+            {fileItems.map(([k, name]) => (
+              <label key={k} className="toggle">
+                <input type="checkbox" checked={!excluded.has(k)} onChange={() => toggleItem(k)} />
+                <span>{name}</span>
+              </label>
+            ))}
+          </details>
 
           {!r.complete && (
             <section className="card warn">

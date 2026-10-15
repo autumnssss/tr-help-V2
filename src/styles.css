@@ -68,3 +68,6 @@ tr.pot td { padding-top: 10px; font-size: 0.8rem; font-weight: 600; color: var(-
 .card-recipe ul { margin: 6px 0 0; padding-left: 18px; }
 .card-recipe li { margin: 3px 0; }
 .card-recipe .card-recipe { background: var(--card); margin-top: 6px; }
+label.toggle { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; cursor: pointer; }
+label.toggle input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); flex: none; }
+details.items summary { cursor: pointer; font-weight: 600; }
