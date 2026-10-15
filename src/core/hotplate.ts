@@ -70,6 +70,7 @@ export function parseSidePicks(variation: string): SidePick[] {
 /** Normalize a title for matching: trim, lowercase, collapse spaces, drop "- Menu X". */
 export function normalizeName(s: string): string {
   return s
+    .replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '') // "Yummy COOKIES!! 🍪"
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim()

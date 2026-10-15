@@ -230,6 +230,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
 
     if (item.kind === 'sidePlate') {
       const picks = parseSidePicks(o.variation);
+      if (!picks.length) { flag({ kind: 'side', title: o.item, side: '(no sides listed)' }); continue; }
       const missing = picks.filter(p => !sides.has(normalizeName(p.name)));
       if (missing.length) {
         missing.forEach(p => flag({ kind: 'side', title: o.item, side: p.name }));

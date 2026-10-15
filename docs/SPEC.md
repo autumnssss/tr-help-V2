@@ -35,6 +35,11 @@ Exceptions are set per menu item. Current known exception: **ribs**, sold as 4 /
 
 **Smoked Mac & Cheese with Broccoli** follows the casserole rule: regular = 8 oz mac + 4 oz broccoli. Its Hotplate "6 OZ" option is mislabeled: it means **+2 oz mac** (10 oz mac + 4 oz broccoli). Soup regular = 16 oz.
 
+### Ingredient conventions
+
+- **Chicken is always boneless skinless chicken breast** unless a recipe says otherwise (web recipes calling for thighs or ground chicken are converted to breast).
+- **BBQ sauce** is Head Country Original, bought by the gallon. By-the-pound meats are the meat plus a rub (to be standardized).
+
 ### Yield and buying
 
 - Every ingredient has one combined **yield %** from as-purchased to plate-ready: trimming, peeling, breakdown and cooking all included. Starches can be over 100% (pasta, grits, rice gain water).

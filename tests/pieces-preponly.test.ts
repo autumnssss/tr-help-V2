@@ -56,3 +56,11 @@ describe('prep-only items (Artisan Sweets)', () => {
     expect(p.unresolved).toEqual([]); // flavors never need setting up
   });
 });
+
+describe('side plates with no sides listed', () => {
+  it('are flagged, not silently dropped', () => {
+    const c: Catalog = { ...catalog, menu: [{ id: 'g', titles: ['Garden Vegetable and Sides'], kind: 'sidePlate', sideOz: 4, packaging: [], labels: 1 }] };
+    expect(plan([order('Garden Vegetables and sides - Menu A', 3)], { ...c, menu: [{ ...c.menu[0]!, titles: ['Garden Vegetables and sides'] }] }).unresolved)
+      .toEqual([{ kind: 'side', title: 'Garden Vegetables and sides - Menu A', side: '(no sides listed)' }]);
+  });
+});

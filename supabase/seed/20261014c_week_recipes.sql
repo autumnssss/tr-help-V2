@@ -55,11 +55,11 @@ select pg_temp.ingredient(n, y) from (values
   ('Whole milk', 1), ('Quick grits', 1), ('Sharp cheddar', 1),
   ('Rye bread', 1), ('Garlic powder', 1), ('Corned beef (deli, cooked)', 1), ('Dill pickles', 1),
   ('Thousand Island dressing', 1), ('Swiss cheese slices', 1),
-  ('Chicken thighs, boneless skinless', 0.75), ('Cornstarch', 1), ('Soy sauce', 1), ('Honey', 1),
+  ('Cornstarch', 1), ('Soy sauce', 1), ('Honey', 1),
   ('Rice vinegar', 1), ('Ground ginger', 1), ('Sesame oil', 1),
   ('Long-grain rice', 2.90), ('Carrots', 0.85), ('Frozen peas', 1),
-  ('Ground chicken', 0.75), ('Green onions', 0.85), ('Fresh ginger', 0.80), ('Hoisin sauce', 1),
-  ('Peanut butter', 1), ('Brown sugar', 1), ('Salmon fillet', 0.75), ('Salmon rub', 1), ('Limes', 0.90)
+  ('Green onions', 0.85), ('Fresh ginger', 0.80), ('Hoisin sauce', 1),
+  ('Chicken breast, boneless skinless', 0.75), ('Peanut butter', 1), ('Brown sugar', 1), ('Salmon fillet', 0.75), ('Salmon rub', 1), ('Limes', 0.90)
 ) v(n, y);
 select pg_temp.ingredient('Sauerkraut', 0.65, '16 oz jar', 16);          -- drained and rinsed
 select pg_temp.ingredient('Water chestnuts', 0.60, '8 oz can', 8);       -- drained
@@ -114,7 +114,7 @@ select pg_temp.set_lines(pg_temp.recipe('Ruben Casserole', 'bake'), 'starting re
 -- ── Chicken Teriyaki (andianne); 1/4 cup water not bought ──────────────────
 select pg_temp.set_lines(pg_temp.recipe('Chicken Teriyaki', 'saute'), 'starting recipe', array[
   ['1',    'tbsp', 'olive oil',                         '0.5',  'Olive oil',                         'ing'],
-  ['1.5',  'lbs',  'boneless skinless chicken thighs',  '24',   'Chicken thighs, boneless skinless', 'ing'],
+  ['1.5',  'lbs',  'boneless skinless chicken breast',  '24',   'Chicken breast, boneless skinless', 'ing'],
   ['1',    'tbsp', 'cornstarch',                        '0.28', 'Cornstarch',                        'ing'],
   ['0.33', 'cup',  'soy sauce',                         '2.9',  'Soy sauce',                         'ing'],
   ['3',    'tbsp', 'honey',                             '2.25', 'Honey',                             'ing'],
@@ -140,7 +140,7 @@ select pg_temp.set_lines(pg_temp.recipe('Fried Rice', 'saute'), 'starting recipe
 
 -- ── Thai Chicken (P.F. Chang's lettuce wrap copycat, filling only) ─────────
 select pg_temp.set_lines(pg_temp.recipe('Thai Chicken', 'saute'), 'starting recipe', array[
-  ['1',   'lb',    'ground chicken',             '16',   'Ground chicken',  'ing'],
+  ['1',   'lb',    'chicken breast, minced',     '16',   'Chicken breast, boneless skinless',  'ing'],
   ['1',   'tbsp',  'low-sodium soy (marinade)',  '0.55', 'Soy sauce',       'ing'],
   ['1',   'tbsp',  'rice vinegar (marinade)',    '0.5',  'Rice vinegar',    'ing'],
   ['1',   'tsp',   'sesame oil (marinade)',      '0.16', 'Sesame oil',      'ing'],

@@ -42,3 +42,9 @@ describe('normalizeName', () => {
     expect(normalizeName('Smoked Beef by the pound ')).toBe('smoked beef by the pound');
   });
 });
+
+describe('normalizeName', () => {
+  it('ignores emoji so "Yummy COOKIES!! 🍪" matches "Yummy COOKIES!!"', () => {
+    expect(normalizeName('Yummy COOKIES!! 🍪')).toBe(normalizeName('Yummy COOKIES!!'));
+  });
+});
