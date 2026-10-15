@@ -13,6 +13,7 @@ export function Recipes({ catalog }: { catalog: Catalog }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [servings, setServings] = useState(10);
   const [servingOz, setServingOz] = useState(4);
+  const [count, setCount] = useState(1);
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -25,11 +26,15 @@ export function Recipes({ catalog }: { catalog: Catalog }) {
     if (openId === id) return setOpenId(null);
     setOpenId(id);
     setServingOz(defaultServingOz(catalog, id));
+    setCount(catalog.recipes.find(r => r.id === id)?.yieldCount ?? 1);
   };
 
-  // batches = servings × serving oz ÷ cooked oz per batch (all in code).
+  // By count: batches = how many ÷ how many one batch makes.
+  // By servings: batches = servings × serving oz ÷ cooked oz per batch. All in code.
+  const openRecipe = openId ? catalog.recipes.find(r => r.id === openId) : undefined;
+  const byCount = openRecipe?.yieldCount;
   const perBatch = openId ? batchOz(catalog, openId) : 0;
-  const batches = perBatch > 0 ? (servings * servingOz) / perBatch : 0;
+  const batches = byCount ? count / byCount : perBatch > 0 ? (servings * servingOz) / perBatch : 0;
   const card = openId && batches > 0 ? recipeCard(catalog, openId, batches) : undefined;
   const servingsPerBatch = perBatch > 0 && servingOz > 0 ? perBatch / servingOz : 0;
 
@@ -44,6 +49,15 @@ export function Recipes({ catalog }: { catalog: Catalog }) {
             <button className={`recipe-row${openId === r.id ? ' open' : ''}`} onClick={() => open(r.id)}>{r.name}</button>
             {openId === r.id && (
               <div className="recipe-open">
+                {r.yieldCount ? (
+                  <>
+                    <div className="scale">
+                      <label>Make <input type="number" min="1" step="1" inputMode="numeric" value={count}
+                        onChange={e => setCount(Math.max(0, Number(e.target.value)))} /> {r.yieldUnit}</label>
+                    </div>
+                    <p className="muted">One batch makes {r.yieldCount} {r.yieldUnit}.</p>
+                  </>
+                ) : (<>
                 <div className="scale">
                   <label>Servings <input type="number" min="1" step="1" inputMode="numeric" value={servings}
                     onChange={e => setServings(Math.max(0, Number(e.target.value)))} /></label>
@@ -56,6 +70,7 @@ export function Recipes({ catalog }: { catalog: Catalog }) {
                       {batchIsEstimate(catalog, r.id) && <span className="estimate"> Estimate — add padding until a batch is weighed.</span>}
                     </p>
                   : <p className="error">This recipe's cooked batch weight isn't known yet, so it can't be scaled by servings.</p>}
+                </>)}
                 {card && <Card card={card} />}
                 {card?.notes && <p className="raw">{card.notes}</p>}
                 {card?.steps && <div className="steps">{card.steps}</div>}

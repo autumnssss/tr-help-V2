@@ -73,3 +73,10 @@ describe('database rows → plan', () => {
     expect(p.prepSheet.map(g => g.method)).toEqual(['smoke', 'unassigned']);
   });
 });
+
+describe('archived recipes', () => {
+  it('are left out of the catalog', () => {
+    const c = rowsToCatalog({ ...rows, kitchen_recipes: [...rows.kitchen_recipes, { id: 'r-old', name: 'Coq Au Vin', method: 'braise', finished_oz: null, archived: true }] });
+    expect(c.recipes.map(r => r.name)).not.toContain('Coq Au Vin');
+  });
+});

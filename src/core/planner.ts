@@ -48,6 +48,9 @@ export type Recipe = {
   onPrepSheet?: boolean;
   steps?: string;
   notes?: string;
+  /** Made by count: one batch makes yieldCount yieldUnit (12 treats, 5 loaves). Scaled by how many you need. */
+  yieldCount?: number;
+  yieldUnit?: string;
 };
 
 /** Stations in the order the prep sheet shows them. */
