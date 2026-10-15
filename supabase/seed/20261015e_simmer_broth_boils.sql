@@ -58,3 +58,9 @@ update public.kitchen_recipes set method = 'simmer'
 where kitchen_id = pg_temp.k() and name in ('Chicken Noodle Soup', 'Broccoli Cheddar Soup', 'Gravy', 'Cheesy Grits');
 
 update public.ingredients set staple = true where kitchen_id = pg_temp.k() and name = 'Soy sauce';
+
+-- Broth lines measured in cups weigh cups × one broth batch (1 cup water + 1 tsp base),
+-- so the dish's card and the broth card agree.
+update public.recipe_lines l set oz = l.amount * (
+  select sum(b.oz) from public.recipe_lines b where b.recipe_id = pg_temp.recipe('Chicken Broth'))
+where l.kitchen_id = pg_temp.k() and l.sub_recipe_id = pg_temp.recipe('Chicken Broth') and l.unit in ('cup', 'cups');

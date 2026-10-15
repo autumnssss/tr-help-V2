@@ -49,7 +49,29 @@ export type Recipe = {
 /** Stations in the order the prep sheet shows them. */
 export const STATION_ORDER: CookingMethod[] = ['smoke', 'bake', 'roast', 'braise', 'boil', 'simmer', 'saute', 'grill', 'no-cook', 'unassigned'];
 
-export type RecipeLine = { ingredientId: string | null; recipeId?: string; name?: string; oz: number | null };
+export type RecipeLine = {
+  ingredientId: string | null;
+  recipeId?: string;
+  name?: string;
+  oz: number | null;
+  /** As written in the recipe, e.g. 0.75 'cup' (used for scaled recipe cards). */
+  amount?: number | null;
+  unit?: string;
+};
+
+/** A recipe multiplied to what's still to prep: batches = cooked oz needed ÷ cooked oz per batch. */
+export type RecipeCard = {
+  recipeId: string;
+  name: string;
+  batches: number;
+  finishedOz: number;
+  /** recipeId = a sub-recipe line; mixedIn = that sub-recipe has no prep line of its own (show it inside this card). */
+  lines: {
+    name: string; amount: number | null; unit: string; oz: number | null; recipeId?: string; mixedIn?: boolean;
+    /** For mixed-in sub-recipes: that recipe scaled to just this line (this dish's share). */
+    sub?: RecipeCard;
+  }[];
+};
 
 /** Finished (plate-ready) oz of a recipe in one order. Cups use actual fill, not cup size. */
 export type Portion = { recipeId: string; oz: number; pieces?: undefined } | { recipeId: string; pieces: number; oz?: undefined };
@@ -156,6 +178,8 @@ export type Plan = {
   containers: { container: string; count: number }[];
   /** Staples this order uses: not on the shopping list, shown so stock can be checked. */
   pantry: ShoppingLine[];
+  /** Every recipe still to prep, scaled to this order (Remaining). Keyed by recipe id. */
+  recipeCards: Record<string, RecipeCard>;
   /** Prep-only items (Artisan Sweets) still to make, by variation. */
   prepOnly: { title: string; variation: string; count: number }[];
 };
@@ -414,6 +438,39 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     list.push(line);
     methods.set(recipe.method, list);
   }
+  // Scale a recipe to a cooked weight; mixed-in sub-recipes get their own card for this line's share.
+  const card = (recipe: Recipe, oz: number, depth = 0): RecipeCard | undefined => {
+    const batch = finishedBatchOz(recipe, ingredients);
+    if (oz <= 0 || batch <= 0 || !recipe.lines.length || depth > 5) return undefined;
+    const batches = oz / batch;
+    return {
+      recipeId: recipe.id,
+      name: recipe.name,
+      batches: round2(batches),
+      finishedOz: round2(oz),
+      lines: recipe.lines.map(l => {
+        const sub = l.recipeId ? recipes.get(l.recipeId) : undefined;
+        const mixedIn = sub?.onPrepSheet === false;
+        const subCard = mixedIn && l.oz != null ? card(sub!, l.oz * batches, depth + 1) : undefined;
+        return {
+          name: sub?.name ?? l.name ?? ingredients.get(l.ingredientId ?? '')?.name ?? '?',
+          amount: l.amount != null ? l.amount * batches : null,
+          unit: l.unit ?? '',
+          oz: l.oz != null ? round2(l.oz * batches) : null,
+          ...(sub ? { recipeId: sub.id } : {}),
+          ...(mixedIn ? { mixedIn: true } : {}),
+          ...(subCard ? { sub: subCard } : {}),
+        };
+      }),
+    };
+  };
+  const recipeCards: Record<string, RecipeCard> = {};
+  for (const [recipeId, oz] of prep.total) {
+    const recipe = recipes.get(recipeId);
+    const c = recipe && card(recipe, oz);
+    if (c) recipeCards[recipeId] = c;
+  }
+
   const prepSheet = [...methods]
     // Grouped lines first (by group), then the rest, each by name.
     .map(([method, items]) => ({
@@ -431,6 +488,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     prepSheet,
     labels: [...labels].map(([title, count]) => ({ title, count })),
     containers: [...containers].map(([container, count]) => ({ container, count })).sort((a, b) => a.container.localeCompare(b.container)),
+    recipeCards,
     prepOnly: [...prepOnlyCounts]
       .map(([k, count]) => { const [title, variation] = JSON.parse(k) as [string, string]; return { title, variation, count }; })
       .sort((a, b) => a.title.localeCompare(b.title) || a.variation.localeCompare(b.variation)),

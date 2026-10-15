@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from 'react';
 import { parseHotplateCsv, type OrderLine } from '../core/hotplate';
-import { plan, type Catalog, type Plan, type ShoppingLine, type Unresolved } from '../core/planner';
+import { plan, type Catalog, type Plan, type RecipeCard, type ShoppingLine, type Unresolved } from '../core/planner';
+import { formatAmount, formatOz } from '../core/units';
 
 type Loaded = { fileName: string; orders: OrderLine[]; result: Plan };
 
@@ -30,6 +31,23 @@ const amount = (l: ShoppingLine) => (l.packages ? `${l.packages.count} ${l.packa
 /** Under a pound reads better in ounces (garlic 0.2 oz, not 0.01 lb). */
 const weight = (oz: number) => (oz < 16 ? `${oz < 1 ? oz.toFixed(2) : oz.toFixed(1)} oz` : `${(oz / 16).toFixed(2)} lb`);
 
+/** A recipe scaled to this order. Mixed-in sub-recipes (broth) open inside it. */
+function Card({ card, cards }: { card: RecipeCard; cards: Record<string, RecipeCard> }) {
+  return (
+    <div className="card-recipe">
+      <div className="muted">× {card.batches} batches → {formatOz(card.finishedOz)} cooked</div>
+      <ul>
+        {card.lines.map((l, i) => (
+          <li key={i}>
+            <strong>{l.amount != null ? formatAmount(l.amount, l.unit) : l.oz != null ? formatOz(l.oz) : '—'}</strong> {l.name}
+            {l.sub && <Card card={l.sub} cards={cards} />}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 const dates = (orders: OrderLine[]) =>
   [...new Set(orders.map(o => o.windowStart.slice(0, 10)).filter(Boolean))].sort();
 
@@ -38,6 +56,15 @@ export function Upload({ catalog }: { catalog: Catalog }) {
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [done, setDone] = useState<Set<string>>(new Set());
+  const [openCard, setOpenCard] = useState<string | null>(null);
+  const cardToggle = (recipeId: string | undefined) =>
+    recipeId && loaded?.result.recipeCards[recipeId]
+      ? <button className="btn link small no-print" onClick={() => setOpenCard(openCard === recipeId ? null : recipeId)}>{openCard === recipeId ? 'Hide recipe' : 'Recipe'}</button>
+      : null;
+  const cardRow = (key: string, recipeId: string | undefined) =>
+    recipeId && openCard === recipeId && loaded?.result.recipeCards[recipeId]
+      ? [<tr key={`card:${key}`} className="card-row"><td /><td colSpan={2}><Card card={loaded.result.recipeCards[recipeId]!} cards={loaded.result.recipeCards} /></td></tr>]
+      : [];
 
   // Ticks on the prep sheet survive a refresh on this device, per uploaded file.
   const doneKey = (fileName: string) => `prep-done:${fileName}`;
@@ -184,20 +211,24 @@ export function Upload({ catalog }: { catalog: Catalog }) {
                           {check(i.recipeId, title)}
                           <td>
                             {title}
-                            {single && <div className="raw">for {single.name}</div>}
+                            {single && <div className="raw">for {single.name} {cardToggle(single.recipeId)}</div>}
                             {!base && i.raw && <div className="raw">from {i.raw.lb.toFixed(2)} lb raw {i.raw.name}</div>}
                             {i.pieces && <div className="raw">plate {i.pieces} pieces</div>}
+                            {cardToggle(i.recipeId)}
                           </td>
                           <td className="num">{base ? '→ ' : ''}{i.finishedLb.toFixed(2)} lb</td>
                         </tr>,
-                        ...(single ? [] : (i.usedIn ?? []).map(u => {
+                        ...cardRow(i.recipeId, i.recipeId),
+                        ...(single ? cardRow(`${i.recipeId}>single`, single.recipeId) : []),
+                        ...(single ? [] : (i.usedIn ?? []).flatMap(u => {
                           const id = `${i.recipeId}>${u.recipeId ?? 'plated'}`;
-                          return (
+                          return [
                             <tr key={id} className={`used-in${done.has(id) ? ' done' : ''}`}>
                               <td className="check" />
-                              <td><span className="nest">{check(id, `${i.name} for ${u.name}`, true)}for {u.name}</span></td><td className="num">{u.lb.toFixed(2)} lb</td>
-                            </tr>
-                          );
+                              <td><span className="nest">{check(id, `${i.name} for ${u.name}`, true)}for {u.name}</span> {cardToggle(u.recipeId)}</td><td className="num">{u.lb.toFixed(2)} lb</td>
+                            </tr>,
+                            ...cardRow(id, u.recipeId),
+                          ];
                         })),
                       ];
                       return [...header, ...rows];

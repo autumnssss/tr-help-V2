@@ -7,7 +7,7 @@ import type { Catalog, CookingMethod, MenuItem, Pack, Size } from '../core/plann
 export type CatalogRows = {
   ingredients: { id: string; name: string; yield: number; yield_source: 'usda' | 'kitchen' | 'estimate'; buffer: number; purchase_unit: string | null; purchase_oz: number | null; staple?: boolean; category?: string | null }[];
   kitchen_recipes: { id: string; name: string; method: CookingMethod | null; finished_oz: number | null; oz_per_piece?: number | null; prep_group?: string | null; on_prep_sheet?: boolean }[];
-  recipe_lines: { recipe_id: string; ingredient_id: string | null; sub_recipe_id: string | null; raw_name: string; oz: number | null; position: number }[];
+  recipe_lines: { recipe_id: string; ingredient_id: string | null; sub_recipe_id: string | null; raw_name: string; oz: number | null; position: number; amount?: number | null; unit?: string | null }[];
   container_types: { id: string; name: string; cost_only: boolean }[];
   menu_items: { id: string; name: string; kind: 'meal' | 'sidePlate' | 'prepOnly'; side_oz: number | null }[];
   menu_titles: { menu_item_id: string; title: string }[];
@@ -88,6 +88,8 @@ export function rowsToCatalog(rows: CatalogRows): Catalog {
           ...(l.sub_recipe_id ? { recipeId: l.sub_recipe_id } : {}),
           name: l.raw_name,
           oz: num(l.oz),
+          amount: l.amount == null ? null : Number(l.amount),
+          unit: l.unit ?? '',
         })),
     })),
     menu,
