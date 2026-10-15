@@ -12,3 +12,4 @@ Ideas captured as they come up. Reviewed after milestone 1 is in real weekly use
 | 2026-10-09 | Raw weight to peel/trim on prep lines (15 lb raw → 12 lb boiled) | Built, not deployed |
 | 2026-10-14 | Scaled recipe per prep line: the recipe multiplied to this week's batch, in the recipe's own units | Next build, needs recipes in |
 | 2026-10-09 | Equipment per station (pots, pans, oven temps) and time-of-day schedule | After a few weeks on station groups |
+| 2026-10-15 | Hotplate prep list can span two weeks: pick the week on upload (or subtract last week's file) so repeat items aren't double-counted | Next, small |
