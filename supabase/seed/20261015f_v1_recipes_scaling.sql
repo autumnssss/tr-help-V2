@@ -64,3 +64,6 @@ select pg_temp.link('Meatballs - Italian', 'eggs', 'Eggs');
 update public.recipe_lines set oz = amount * 2 where recipe_id = pg_temp.r('Meatballs - Italian') and raw_name = 'eggs';
 select pg_temp.link('Meatballs - Italian', 'breadcrumbs', 'Breadcrumbs', 6);
 select pg_temp.link('Meatballs - Italian', 'grated dry Parmesan cheese', 'Parmesan, grated', 4);
+
+-- Kitchen 2026-10-15: delete Quick Chicken Tikka Masala (duplicate of Butter Chicken).
+delete from public.kitchen_recipes where kitchen_id = pg_temp.k() and name = 'Quick Chicken Tikka Masala';
