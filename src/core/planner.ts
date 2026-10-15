@@ -44,6 +44,8 @@ export type Recipe = {
   prepGroup?: string;
   /** False for things mixed into another dish on the spot (broth from base): no prep line of its own. */
   onPrepSheet?: boolean;
+  steps?: string;
+  notes?: string;
 };
 
 /** Stations in the order the prep sheet shows them. */
@@ -64,7 +66,10 @@ export type RecipeCard = {
   recipeId: string;
   name: string;
   batches: number;
-  finishedOz: number;
+  /** Cooked weight of these batches; null when the recipe's batch weight isn't known yet. */
+  finishedOz: number | null;
+  steps?: string;
+  notes?: string;
   /** recipeId = a sub-recipe line; mixedIn = that sub-recipe has no prep line of its own (show it inside this card). */
   lines: {
     name: string; amount: number | null; unit: string; oz: number | null; recipeId?: string; mixedIn?: boolean;
@@ -207,6 +212,76 @@ export function finishedBatchOz(recipe: Recipe, ingredients: Map<string, Ingredi
     (sum, l) => sum + (l.oz ?? 0) * (l.recipeId ? 1 : (l.ingredientId && ingredients.get(l.ingredientId)?.yield) || 0),
     0,
   );
+}
+
+/** A recipe × batches, every line in its own units. Mixed-in sub-recipes get a card for this line's share. */
+function buildCard(recipe: Recipe, batches: number, recipes: Map<string, Recipe>, ingredients: Map<string, Ingredient>, depth = 0): RecipeCard {
+  const batch = finishedBatchOz(recipe, ingredients);
+  return {
+    recipeId: recipe.id,
+    name: recipe.name,
+    batches: round2(batches),
+    finishedOz: batch > 0 ? round2(batch * batches) : null,
+    ...(recipe.steps ? { steps: recipe.steps } : {}),
+    ...(recipe.notes ? { notes: recipe.notes } : {}),
+    lines: recipe.lines.map(l => {
+      const sub = l.recipeId ? recipes.get(l.recipeId) : undefined;
+      const mixedIn = sub?.onPrepSheet === false;
+      const subBatch = sub ? finishedBatchOz(sub, ingredients) : 0;
+      const subCard = mixedIn && l.oz != null && subBatch > 0 && depth < 5
+        ? buildCard(sub!, (l.oz * batches) / subBatch, recipes, ingredients, depth + 1) : undefined;
+      return {
+        name: sub?.name ?? l.name ?? ingredients.get(l.ingredientId ?? '')?.name ?? '?',
+        amount: l.amount != null ? l.amount * batches : null,
+        unit: l.unit ?? '',
+        oz: l.oz != null ? round2(l.oz * batches) : null,
+        ...(sub ? { recipeId: sub.id } : {}),
+        ...(mixedIn ? { mixedIn: true } : {}),
+        ...(subCard ? { sub: subCard } : {}),
+      };
+    }),
+  };
+}
+
+/** Any recipe on its own, scaled to a number of batches (Recipes screen). */
+export function recipeCard(catalog: Catalog, recipeId: string, batches: number): RecipeCard | undefined {
+  const recipes = new Map(catalog.recipes.map(r => [r.id, r]));
+  const ingredients = new Map(catalog.ingredients.map(i => [i.id, i]));
+  const recipe = recipes.get(recipeId);
+  return recipe ? buildCard(recipe, batches, recipes, ingredients) : undefined;
+}
+
+/**
+ * One serving of a recipe as sold: its portion in the menu's regular size (pieces × oz per piece for
+ * counted portions). Falls back to the most common portion, then 4 oz.
+ */
+export function defaultServingOz(catalog: Catalog, recipeId: string): number {
+  const recipe = catalog.recipes.find(r => r.id === recipeId);
+  const ozOf = (p: Portion) => p.oz ?? (p.pieces && recipe?.ozPerPiece ? p.pieces * recipe.ozPerPiece : undefined);
+  const regular: number[] = [];
+  const any: number[] = [];
+  for (const m of catalog.menu) {
+    if (m.kind !== 'meal') continue;
+    for (const [key, size] of Object.entries(m.sizes)) {
+      for (const p of size.portions) {
+        if (p.recipeId !== recipeId) continue;
+        const oz = ozOf(p);
+        if (oz === undefined) continue;
+        (key === 'regular' ? regular : any).push(oz);
+      }
+    }
+  }
+  const pick = regular.length ? regular : any;
+  if (!pick.length) return 4;
+  const counts = new Map<number, number>();
+  for (const oz of pick) counts.set(oz, (counts.get(oz) ?? 0) + 1);
+  return [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]![0];
+}
+
+/** Cooked oz of one batch, or 0 if not known yet (Recipes screen: "make N lb" → batches). */
+export function batchOz(catalog: Catalog, recipeId: string): number {
+  const recipe = catalog.recipes.find(r => r.id === recipeId);
+  return recipe ? finishedBatchOz(recipe, new Map(catalog.ingredients.map(i => [i.id, i]))) : 0;
 }
 
 function buyLine(ing: Ingredient, oz: number): ShoppingLine {
@@ -438,37 +513,11 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     list.push(line);
     methods.set(recipe.method, list);
   }
-  // Scale a recipe to a cooked weight; mixed-in sub-recipes get their own card for this line's share.
-  const card = (recipe: Recipe, oz: number, depth = 0): RecipeCard | undefined => {
-    const batch = finishedBatchOz(recipe, ingredients);
-    if (oz <= 0 || batch <= 0 || !recipe.lines.length || depth > 5) return undefined;
-    const batches = oz / batch;
-    return {
-      recipeId: recipe.id,
-      name: recipe.name,
-      batches: round2(batches),
-      finishedOz: round2(oz),
-      lines: recipe.lines.map(l => {
-        const sub = l.recipeId ? recipes.get(l.recipeId) : undefined;
-        const mixedIn = sub?.onPrepSheet === false;
-        const subCard = mixedIn && l.oz != null ? card(sub!, l.oz * batches, depth + 1) : undefined;
-        return {
-          name: sub?.name ?? l.name ?? ingredients.get(l.ingredientId ?? '')?.name ?? '?',
-          amount: l.amount != null ? l.amount * batches : null,
-          unit: l.unit ?? '',
-          oz: l.oz != null ? round2(l.oz * batches) : null,
-          ...(sub ? { recipeId: sub.id } : {}),
-          ...(mixedIn ? { mixedIn: true } : {}),
-          ...(subCard ? { sub: subCard } : {}),
-        };
-      }),
-    };
-  };
   const recipeCards: Record<string, RecipeCard> = {};
   for (const [recipeId, oz] of prep.total) {
     const recipe = recipes.get(recipeId);
-    const c = recipe && card(recipe, oz);
-    if (c) recipeCards[recipeId] = c;
+    const batch = recipe ? finishedBatchOz(recipe, ingredients) : 0;
+    if (recipe && oz > 0 && batch > 0 && recipe.lines.length) recipeCards[recipeId] = buildCard(recipe, oz / batch, recipes, ingredients);
   }
 
   const prepSheet = [...methods]

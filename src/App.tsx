@@ -5,6 +5,7 @@ import { loadCatalog } from './lib/catalog';
 import { uploadHistory } from './lib/history';
 import { configError, db, myKitchen } from './lib/supabase';
 import { Login } from './screens/Login';
+import { Recipes } from './screens/Recipes';
 import { Upload } from './screens/Upload';
 
 type KitchenState =
@@ -16,6 +17,7 @@ type KitchenState =
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [kitchen, setKitchen] = useState<KitchenState>({ status: 'loading' });
+  const [tab, setTab] = useState<'prep' | 'recipes'>('prep');
 
   useEffect(() => {
     void db.auth.getSession().then(({ data }) => setSession(data.session));
@@ -42,7 +44,12 @@ export function App() {
     <>
       <header className="no-print">
         <strong>TR Help</strong>
-        {kitchen.status === 'ready' && <span className="muted">{kitchen.name}</span>}
+        {kitchen.status === 'ready' && (
+          <nav className="tabs">
+            <button className={tab === 'prep' ? 'active' : ''} onClick={() => setTab('prep')}>Prep list</button>
+            <button className={tab === 'recipes' ? 'active' : ''} onClick={() => setTab('recipes')}>Recipes</button>
+          </nav>
+        )}
         <span className="spacer" />
         <span className="muted email">{session.user.email}</span>
         <button className="btn link" onClick={() => void db.auth.signOut()}>Log out</button>
@@ -50,7 +57,13 @@ export function App() {
       {kitchen.status === 'loading' && <main><p className="muted">Loading kitchen…</p></main>}
       {kitchen.status === 'none' && <main><p>Your login isn’t linked to a kitchen yet. Ask the owner to invite this email.</p></main>}
       {kitchen.status === 'error' && <main><p className="error">{kitchen.message}</p></main>}
-      {kitchen.status === 'ready' && <Upload catalog={kitchen.catalog} history={uploadHistory(db, kitchen.id)} />}
+      {kitchen.status === 'ready' && (
+        <>
+          {/* Both stay mounted so switching tabs keeps the uploaded file. */}
+          <div hidden={tab !== 'prep'}><Upload catalog={kitchen.catalog} history={uploadHistory(db, kitchen.id)} /></div>
+          <div hidden={tab !== 'recipes'}><Recipes catalog={kitchen.catalog} /></div>
+        </>
+      )}
     </>
   );
 }

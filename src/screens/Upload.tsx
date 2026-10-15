@@ -1,7 +1,7 @@
 import { useMemo, useState, type DragEvent } from 'react';
 import { parseHotplateCsv, type OrderLine } from '../core/hotplate';
 import { plan, type Catalog, type Plan, type RecipeCard, type ShoppingLine, type Unresolved } from '../core/planner';
-import { formatAmount, formatOz } from '../core/units';
+import { Card } from '../components/RecipeCard';
 import { containsOrders, sameOrders, subtractOrders } from '../core/weeks';
 import { normalizeName } from '../core/hotplate';
 
@@ -39,23 +39,6 @@ const amount = (l: ShoppingLine) => (l.packages ? `${l.packages.count} ${l.packa
 
 /** Under a pound reads better in ounces (garlic 0.2 oz, not 0.01 lb). */
 const weight = (oz: number) => (oz < 16 ? `${oz < 1 ? oz.toFixed(2) : oz.toFixed(1)} oz` : `${(oz / 16).toFixed(2)} lb`);
-
-/** A recipe scaled to this order. Mixed-in sub-recipes (broth) open inside it. */
-function Card({ card, cards }: { card: RecipeCard; cards: Record<string, RecipeCard> }) {
-  return (
-    <div className="card-recipe">
-      <div className="muted">× {card.batches} batches → {formatOz(card.finishedOz)} cooked</div>
-      <ul>
-        {card.lines.map((l, i) => (
-          <li key={i}>
-            <strong>{l.amount != null ? formatAmount(l.amount, l.unit) : l.oz != null ? formatOz(l.oz) : '—'}</strong> {l.name}
-            {l.sub && <Card card={l.sub} cards={cards} />}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 const dates = (orders: OrderLine[]) =>
   [...new Set(orders.map(o => o.windowStart.slice(0, 10)).filter(Boolean))].sort();

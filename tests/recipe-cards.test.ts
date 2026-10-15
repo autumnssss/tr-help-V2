@@ -1,5 +1,5 @@
 import type { OrderLine } from '../src/core/hotplate';
-import { plan, type Catalog } from '../src/core/planner';
+import { batchOz, defaultServingOz, plan, recipeCard, type Catalog } from '../src/core/planner';
 import { formatAmount, toEighths } from '../src/core/units';
 
 const order = (item: string, quantity: number, remaining = quantity): OrderLine =>
@@ -57,5 +57,34 @@ describe('formatAmount', () => {
     expect(formatAmount(4.856, 'lbs')).toBe('4.86 lbs');
     expect(formatAmount(5.75, 'large')).toBe('5.8 large');
     expect(formatAmount(3, '')).toBe('3');
+  });
+});
+
+describe('recipes by servings (no order needed)', () => {
+  const c: Catalog = {
+    ...catalog,
+    recipes: [...catalog.recipes, { id: 'shrimp', name: 'Shrimp', method: 'saute', ozPerPiece: 0.5, lines: [{ ingredientId: 'noodles', oz: 16, amount: 1, unit: 'lb' }] }],
+    menu: [
+      { id: 's', titles: ['Soup'], kind: 'meal', sizes: {
+        regular: { portions: [{ recipeId: 'soup', oz: 16 }], packaging: [], labels: 1 },
+        '24 ounces': { portions: [{ recipeId: 'soup', oz: 24 }], packaging: [], labels: 1 },
+      } },
+      { id: 'sg', titles: ['Shrimp & Grits'], kind: 'meal', sizes: { regular: { portions: [{ recipeId: 'shrimp', pieces: 9 }], packaging: [], labels: 1 } } },
+    ],
+  };
+
+  it('defaults a serving to the regular portion on the menu (pieces × oz per piece for counted items)', () => {
+    expect(defaultServingOz(c, 'soup')).toBe(16);
+    expect(defaultServingOz(c, 'shrimp')).toBe(4.5);
+    expect(defaultServingOz(c, 'broth')).toBe(4); // not on the menu
+  });
+
+  it('scales by batches: servings × serving oz ÷ cooked oz per batch', () => {
+    // 10 servings × 16 oz = 160 oz ÷ 32 oz per batch = 5 batches.
+    const batches = (10 * defaultServingOz(c, 'soup')) / batchOz(c, 'soup');
+    const card = recipeCard(c, 'soup', batches)!;
+    expect(card.batches).toBe(5);
+    expect(card.finishedOz).toBe(160);
+    expect(card.lines.map(l => formatAmount(l.amount!, l.unit))).toEqual(['15 cups', '40 oz']);
   });
 });

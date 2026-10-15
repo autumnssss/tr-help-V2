@@ -71,3 +71,13 @@ tr.pot td { padding-top: 10px; font-size: 0.8rem; font-weight: 600; color: var(-
 label.toggle { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; cursor: pointer; }
 label.toggle input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); flex: none; }
 details.items summary { cursor: pointer; font-weight: 600; }
+.tabs { display: flex; gap: 4px; }
+.tabs button { border: 0; background: none; font: inherit; padding: 6px 10px; border-radius: 6px; color: var(--muted); cursor: pointer; }
+.tabs button.active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+.search { width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; }
+.recipe-row { display: block; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 10px 4px; font: inherit; cursor: pointer; color: var(--text); }
+.recipe-row.open { font-weight: 600; color: var(--accent); }
+.recipe-open { padding: 8px 4px 12px; }
+.scale { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.scale input { width: 72px; padding: 6px 8px; font: inherit; border: 1px solid var(--line); border-radius: 6px; margin-left: 4px; }
+.steps { white-space: pre-wrap; font-size: 0.9rem; margin-top: 8px; }
