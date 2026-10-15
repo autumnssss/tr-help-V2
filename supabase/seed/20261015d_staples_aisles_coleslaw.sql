@@ -74,7 +74,7 @@ update public.ingredients set staple = (name in (
   'Kosher salt', 'Black pepper', 'Butter', 'All-purpose flour', 'Cornstarch', 'Vegetable oil', 'Olive oil',
   'Sugar', 'Brown sugar', 'Garlic powder', 'Italian seasoning', 'Dried thyme', 'Bay leaves', 'Ground ginger',
   'Celery seed', 'White vinegar', 'Rice vinegar', 'Apple cider vinegar', 'Soy sauce', 'Worcestershire sauce',
-  'Dijon mustard', 'Yellow mustard', 'Honey', 'Sesame oil', 'Head Country BBQ sauce, Original',
+  'Dijon mustard', 'Yellow mustard', 'Mayonnaise', 'Honey', 'Sesame oil', 'Head Country BBQ sauce, Original',
   'Better Than Bouillon chicken base (+ water)', 'BBQ rub', 'Salmon rub'))
 where kitchen_id = pg_temp.k();
 
