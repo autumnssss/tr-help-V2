@@ -159,11 +159,11 @@ update public.kitchen_recipes set notes = 'Starting recipe: Tastes Better From S
 where id = pg_temp.recipe('Thai Chicken');
 
 -- ── Peanut Sauce (estimate: kitchen gave ingredients, not ratios) ───────────
-select pg_temp.set_lines(pg_temp.recipe('Peanut Sauce', 'no-cook'), 'estimate', array[
+select pg_temp.set_lines(pg_temp.recipe('Peanut Sauce', 'no-cook'), 'kitchen ok', array[
   ['1',    'cup',  'peanut butter',  '9',   'Peanut butter', 'ing'],
   ['3',    'tbsp', 'brown sugar',    '1.3', 'Brown sugar',   'ing'],
   ['0.25', 'cup',  'soy sauce',      '2.2', 'Soy sauce',     'ing']]);
-select pg_temp.finish(pg_temp.recipe('Peanut Sauce'), 16.5, 'Plus ~1/2 cup water to thin. Ratios are an estimate.');
+select pg_temp.finish(pg_temp.recipe('Peanut Sauce'), 16.5, 'Plus ~1/2 cup water to thin. Ratios approved by the kitchen 2026-10-15.');
 
 -- ── Smoked Salmon: rub, ~4 hours in the smoker, finished in the oven ───────
 select pg_temp.set_lines(pg_temp.recipe('Smoked Salmon', 'smoke'), 'estimate', array[
