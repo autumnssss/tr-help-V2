@@ -207,12 +207,13 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
             <p className="muted">As-purchased weight for every meal sold (Quantity), after yield loss and buffer.</p>
             {r.shoppingList.length === 0 ? <p className="muted">Nothing yet.</p> : (
               <table>
-                <thead><tr><th>Ingredient</th><th className="num">Amount</th></tr></thead>
+                <thead><tr><th className="check" /><th>Ingredient</th><th className="num">Amount</th></tr></thead>
                 <tbody>
                   {r.shoppingList.flatMap((l, i) => [
                     ...(i === 0 || r.shoppingList[i - 1]!.category !== l.category
-                      ? [<tr key={`cat:${l.category}`} className="aisle"><td colSpan={2}>{l.category}</td></tr>] : []),
-                    <tr key={l.ingredientId}>
+                      ? [<tr key={`cat:${l.category}`} className="aisle"><td colSpan={3}>{l.category}</td></tr>] : []),
+                    <tr key={l.ingredientId} className={done.has(`shop:${l.ingredientId}`) ? 'done' : ''}>
+                      {check(`shop:${l.ingredientId}`, l.name)}
                       <td>{l.name}</td>
                       <td className="num">{amount(l)}</td>
                     </tr>,
@@ -225,7 +226,9 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                 <summary>From the pantry ({r.pantry.length}) — not on the list, check stock</summary>
                 <table><tbody>
                   {r.pantry.map(l => (
-                    <tr key={l.ingredientId}><td>{l.name}</td><td className="num">{amount(l)}</td></tr>
+                    <tr key={l.ingredientId} className={done.has(`pantry:${l.ingredientId}`) ? 'done' : ''}>
+                      {check(`pantry:${l.ingredientId}`, l.name)}<td>{l.name}</td><td className="num">{amount(l)}</td>
+                    </tr>
                   ))}
                 </tbody></table>
               </details>
