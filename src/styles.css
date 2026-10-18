@@ -82,3 +82,23 @@ details.items summary { cursor: pointer; font-weight: 600; }
 .scale input { width: 72px; padding: 6px 8px; font: inherit; border: 1px solid var(--line); border-radius: 6px; margin-left: 4px; }
 .steps { white-space: pre-wrap; font-size: 0.9rem; margin-top: 8px; }
 .estimate { color: #a35d00; font-weight: 600; }
+
+/* ── Printed page: two columns, a rule between them, a line between sections. Screen layout unchanged. ── */
+@media print {
+  @page { size: letter; margin: 0.4in; }
+  body { font-size: 10pt; }
+  header, .drop, details.items, .card-row, .btn { display: none !important; }
+  main { max-width: none; padding: 0; columns: 2; column-gap: 0.3in; column-rule: 1px solid #888; }
+  .summary { column-span: all; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 2px solid #000; }
+  .summary h2 { font-size: 13pt; }
+  .card { margin: 0 0 8px; padding: 6px 0 0; border-radius: 0; border-top: 1.5px solid #000; }
+  .card > p.muted, .card .muted:not(.raw) { display: none; }
+  .card h3 { font-size: 11pt; margin-bottom: 2px; break-after: avoid; }
+  .card h4 { margin: 6px 0 2px; break-after: avoid; }
+  .two-col { display: block; }
+  tr { break-inside: avoid; }
+  th, td { padding: 2px 3px; }
+  td.check input, .nest input { width: 12px; height: 12px; }
+  .raw { font-size: 8pt; }
+  .warn { border: 1.5px solid #000; padding: 4px; }
+}
