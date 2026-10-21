@@ -65,6 +65,12 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 
 - Labels stay designed and printed in Munbyn. The app only outputs counts.
 - **Label count = number of plates** in the order (cups and condiment cups get no label). Regular = 1. Family = 3 for most meals, 2 for family ribs (2× 24 oz flat) and family chicken veggie pasta (2× 24 oz long).
+- **Labels by destination** (kitchen 2026-10-21): per meal, the total labels, then one row per destination with label counts by size: Regular, 6 oz, 8 oz (0/blank if none), Family (labels, i.e. family orders × that meal's family label count). Example: `Meatloaf 38` → `Bounce & Play: reg 6, 6 oz 1, 8 oz 0, family 3`.
+- Destinations come from the order's fulfillment address and are always named exactly:
+  - **Bounce & Play**: the Elm address (3804 South Elm Place, Broken Arrow)
+  - **Elevate**: the Sheridan address (8990 South Sheridan Road, Suite B, Tulsa)
+  - **Deliveries**: every other address
+- Needs a Hotplate export with destination **and** size per order (the summary Orders export has item counts but no sizes). Labels are color-coded by hand with a highlighter to match the tickets.
 
 ### Prep sheet
 
