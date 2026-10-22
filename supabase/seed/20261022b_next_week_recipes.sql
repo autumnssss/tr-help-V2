@@ -68,8 +68,6 @@ select k.id, v.name, v.m, v.notes, v.steps from k, (values
   ('House Salad', 'no-cook', 'Plate: 2 oz. Ranch in its own cup: 1.5 oz single (2 oz cup), 4 oz family.',
    E'1. Dry romaine fully before packing.\n2. Pack ranch in its own cup.'),
   ('Ranch Dressing', 'no-cook', 'Lidded condiment cups: 1.5 oz single (2 oz cup), 4 oz family.', ''),
-  ('Mac and Cheese', 'simmer', 'Plate: 4 oz. Batch weight is an estimate; weigh the first full batch.',
-   E'1. Cook macaroni per package directions, 2 min short of al dente; cool spread on a sheet pan.\n2. Melt butter, whisk in flour 1 min, gradually whisk in milk until thickened.\n3. Off the heat, below a simmer, stir in cream cheese and cheeses in handfuls until melted. Season (taste first; cheeses are salty).\n4. Combine with macaroni. Keep the sauce slightly loose. No bake, no breadcrumb topping.\n5. Cool and pack.'),
   ('Smoked BBQ Bologna', 'smoke', 'Plate: 4 oz cooked, sliced. BBQ sauce on the side: 1.5 oz single, 4 oz family.',
    E'1. Rub the cut face and sides.\n2. Smoke. Serve sliced with BBQ sauce on the side.')
 ) v(name, m, notes, steps)
@@ -80,7 +78,7 @@ delete from public.recipe_lines l using public.kitchen_recipes r, public.kitchen
 where l.recipe_id = r.id and r.kitchen_id = k.id and k.name = 'TR Help' and r.name in (
   'Basmati Rice', 'Orzo', 'Spaghetti', 'Spaghetti Sauce (Tone''s)', 'Baked Pork Tenderloin', 'Roasted Sweet Potatoes',
   'Herb Cheese Spread', 'Baked Salmon', 'Grilled Salmon', 'Roasted Red Potatoes', 'Roasted Asparagus', 'House Salad',
-  'Ranch Dressing', 'Mac and Cheese', 'Smoked BBQ Bologna');
+  'Ranch Dressing', 'Smoked Mac & Cheese', 'Smoked BBQ Bologna');
 
 with k as (select id from public.kitchens where name = 'TR Help')
 insert into public.recipe_lines (kitchen_id, recipe_id, position, amount, unit, raw_name, note, ingredient_id, oz)
@@ -134,21 +132,21 @@ from k, (values
   ('House Salad', 2, 0.25, 1, 'oz', 'carrots, grated', 'Shredded carrots', 28.3495, '0.2 oz on the plate'),
   ('House Salad', 3, 0.25, 1, 'oz', 'red cabbage', 'Red cabbage', 28.3495, '0.2 oz on the plate'),
   ('Ranch Dressing', 1, 1, 1, 'oz', 'ranch dressing', 'Ranch dressing', 28.3495, ''),
-  -- Mac and Cheese: the sheet gives per-plate amounts and a ~100 oz batch (4 oz plates), so mult = 100 ÷ 4 plates.
-  ('Mac and Cheese', 1, 0.65, 100 / 4.0, 'oz', 'elbow macaroni, dry', 'Elbow macaroni', 28.3495, ''),
-  ('Mac and Cheese', 2, 0.95, 100 / 4.0, 'oz', 'sharp cheddar, block-grated', 'Sharp cheddar', 28.3495, ''),
-  ('Mac and Cheese', 3, 0.15, 100 / 4.0, 'oz', 'parmesan, grated', 'Parmesan, grated', 28.3495, ''),
-  ('Mac and Cheese', 4, 0.15, 100 / 4.0, 'oz', 'cream cheese', 'Cream cheese, 8 oz block', 28.3495, ''),
-  ('Mac and Cheese', 5, 1.4, 100 / 4.0, 'oz', 'whole milk', 'Whole milk', 28.3495, ''),
-  ('Mac and Cheese', 6, 0.15, 100 / 4.0, 'oz', 'butter', 'Butter', 28.3495, ''),
-  ('Mac and Cheese', 7, 0.1, 100 / 4.0, 'oz', 'all-purpose flour', 'All-purpose flour', 28.3495, ''),
-  ('Mac and Cheese', 8, 1, 1, 'tsp', 'kosher salt', 'Kosher salt', 3, 'estimate'),
-  ('Mac and Cheese', 9, 0.5, 1, 'tsp', 'black pepper', 'Black pepper', 2.3, 'estimate'),
-  ('Mac and Cheese', 10, 1, 1, 'tsp', 'garlic powder', 'Garlic powder', 3.1, 'estimate'),
-  ('Mac and Cheese', 11, 1, 1, 'tsp', 'onion powder', 'Onion powder', 2.4, 'estimate'),
+  -- Smoked Mac & Cheese (the existing recipe, empty until now; same as the sheet's Mac and Cheese, smoked): the sheet gives per-plate amounts and a ~100 oz batch (4 oz plates), so mult = 100 ÷ 4 plates.
+  ('Smoked Mac & Cheese', 1, 0.65, 100 / 4.0, 'oz', 'elbow macaroni, dry', 'Elbow macaroni', 28.3495, ''),
+  ('Smoked Mac & Cheese', 2, 0.95, 100 / 4.0, 'oz', 'sharp cheddar, block-grated', 'Sharp cheddar', 28.3495, ''),
+  ('Smoked Mac & Cheese', 3, 0.15, 100 / 4.0, 'oz', 'parmesan, grated', 'Parmesan, grated', 28.3495, ''),
+  ('Smoked Mac & Cheese', 4, 0.15, 100 / 4.0, 'oz', 'cream cheese', 'Cream cheese, 8 oz block', 28.3495, ''),
+  ('Smoked Mac & Cheese', 5, 1.4, 100 / 4.0, 'oz', 'whole milk', 'Whole milk', 28.3495, ''),
+  ('Smoked Mac & Cheese', 6, 0.15, 100 / 4.0, 'oz', 'butter', 'Butter', 28.3495, ''),
+  ('Smoked Mac & Cheese', 7, 0.1, 100 / 4.0, 'oz', 'all-purpose flour', 'All-purpose flour', 28.3495, ''),
+  ('Smoked Mac & Cheese', 8, 1, 1, 'tsp', 'kosher salt', 'Kosher salt', 3, 'estimate'),
+  ('Smoked Mac & Cheese', 9, 0.5, 1, 'tsp', 'black pepper', 'Black pepper', 2.3, 'estimate'),
+  ('Smoked Mac & Cheese', 10, 1, 1, 'tsp', 'garlic powder', 'Garlic powder', 3.1, 'estimate'),
+  ('Smoked Mac & Cheese', 11, 1, 1, 'tsp', 'onion powder', 'Onion powder', 2.4, 'estimate'),
   ('Smoked BBQ Bologna', 1, 1, 1, 'lb', 'bologna', 'Bologna, whole chub', 453.592, '5 oz raw → 4 oz cooked, estimate'),
   -- Rub: the sheet says about 0.1 oz per 5 oz raw plate, so mult = 16 oz ÷ 5 oz.
-  ('Smoked BBQ Bologna', 2, 0.1, 16 / 5.0, 'oz', 'custom rub (1 tbsp per lb)', 'Custom rub', 28.3495, 'ingredients unknown; get supplier label')
+  ('Smoked BBQ Bologna', 2, 0.1, 16 / 5.0, 'oz', 'custom rub (1 tbsp per lb)', 'Custom rub', 28.3495, 'a friend''s blend; ingredients not shared')
 ) v(recipe, pos, amount, mult, unit, line, ingredient, g, note)
 join public.kitchen_recipes r on r.kitchen_id = (select id from k) and r.name = v.recipe
 join public.ingredients i on i.kitchen_id = (select id from k) and lower(i.name) = lower(v.ingredient);
@@ -161,8 +159,13 @@ update public.kitchen_recipes r set finished_oz_measured = false, finished_oz = 
     when 'Roasted Red Potatoes'  then 16 * 4 / 5.25
     when 'Spaghetti Sauce (Tone''s)' then 50
     when 'House Salad'           then 2
-    when 'Mac and Cheese'        then 100
+    when 'Smoked Mac & Cheese'   then 100
   end
 from public.kitchens k
 where k.id = r.kitchen_id and k.name = 'TR Help'
-  and r.name in ('Baked Salmon', 'Grilled Salmon', 'Roasted Red Potatoes', 'Spaghetti Sauce (Tone''s)', 'House Salad', 'Mac and Cheese');
+  and r.name in ('Baked Salmon', 'Grilled Salmon', 'Roasted Red Potatoes', 'Spaghetti Sauce (Tone''s)', 'House Salad', 'Smoked Mac & Cheese');
+
+-- Smoked Mac & Cheese notes and steps (smoked, not baked).
+update public.kitchen_recipes r set notes = 'Plate: 4 oz. Batch weight is an estimate; weigh the first full batch.',
+  steps = E'1. Cook macaroni per package directions, 2 min short of al dente; cool spread on a sheet pan.\n2. Melt butter, whisk in flour 1 min, gradually whisk in milk until thickened.\n3. Off the heat, below a simmer, stir in cream cheese and cheeses in handfuls until melted. Season (taste first; cheeses are salty).\n4. Combine with macaroni. Keep the sauce slightly loose. No breadcrumb topping.\n5. Smoke in the smoker (not baked in the oven).\n6. Cool and pack.'
+from public.kitchens k where k.id = r.kitchen_id and k.name = 'TR Help' and r.name = 'Smoked Mac & Cheese';
