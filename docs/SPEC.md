@@ -72,6 +72,15 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
   - **Deliveries**: every other address
 - Needs a Hotplate export with destination **and** size per order (the summary Orders export has item counts but no sizes). Labels are color-coded by hand with a highlighter to match the tickets.
 
+### Stations (kitchen 2026-10-22)
+
+- **Every item on the menu has a station.** An item without one goes in **Needs setup** (top of the page), never
+  in a catch-all at the bottom: an item missing from its station means a second pot or oven run for one plate.
+- **No "small items" list.** Every line stays in its station, however small (2.5 oz of cauliflower is one client's plate).
+- **Boil:** everything boiled is under **Salted water**; rice is its own pot. The app does not order the boil.
+  Chef B does, because of debris and color carry-over (potatoes only with potatoes, green beans before broccoli,
+  cauliflower not after greens), and several boils may run at once.
+
 ### Plate weight vs. what's bought (kitchen 2026-10-22)
 
 - Plate weights (4/4/4, 6 oz, family) count the main components only. **Sauces, gravies and garnish are not counted**
