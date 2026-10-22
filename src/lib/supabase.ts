@@ -9,9 +9,11 @@ export const configError = !url || !key
 
 export const db = createClient(url ?? 'http://localhost', key ?? 'missing');
 
+export type Padding = { kcal: number; protein: number; carbs: number; fat: number };
+
 /** The signed-in user's kitchen. Single-kitchen for now: the first membership. */
-export async function myKitchen(): Promise<{ id: string; name: string } | null> {
-  const { data, error } = await db.from('kitchens').select('id, name').order('created_at').limit(1);
+export async function myKitchen(): Promise<{ id: string; name: string; macro_padding?: Padding } | null> {
+  const { data, error } = await db.from('kitchens').select('id, name, macro_padding').order('created_at').limit(1);
   if (error) throw new Error(error.message);
   return data?.[0] ?? null;
 }

@@ -124,3 +124,4 @@ details.items summary { cursor: pointer; font-weight: 600; }
 .editor .ask { background: #fff7e0; border: 1px solid #e8c766; border-radius: 6px; padding: 6px 8px; font-size: 0.92em; }
 .editor .ask input.amt { width: 5em; font: inherit; padding: 3px 5px; }
 .history { margin-top: 8px; }
+.label-line { font-size: 1.05em; margin: 4px 0; }

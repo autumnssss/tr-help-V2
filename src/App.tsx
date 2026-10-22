@@ -3,8 +3,9 @@ import type { Session } from '@supabase/supabase-js';
 import type { Catalog } from './core/planner';
 import { loadCatalog } from './lib/catalog';
 import { uploadHistory } from './lib/history';
-import { configError, db, myKitchen } from './lib/supabase';
+import { configError, db, myKitchen, type Padding } from './lib/supabase';
 import { Login } from './screens/Login';
+import { Nutrition } from './screens/Nutrition';
 import { Recipes } from './screens/Recipes';
 import { Upload } from './screens/Upload';
 
@@ -12,12 +13,12 @@ type KitchenState =
   | { status: 'loading' }
   | { status: 'none' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; id: string; name: string; catalog: Catalog };
+  | { status: 'ready'; id: string; name: string; catalog: Catalog; padding?: Padding };
 
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [kitchen, setKitchen] = useState<KitchenState>({ status: 'loading' });
-  const [tab, setTab] = useState<'prep' | 'recipes'>('prep');
+  const [tab, setTab] = useState<'prep' | 'recipes' | 'nutrition'>('prep');
   const [reloads, setReloads] = useState(0); // bump to reload the catalog after an edit
 
   useEffect(() => {
@@ -33,7 +34,7 @@ export function App() {
     (async () => {
       const k = await myKitchen();
       if (!k) return setKitchen({ status: 'none' });
-      setKitchen({ status: 'ready', id: k.id, name: k.name, catalog: await loadCatalog(db, k.id) });
+      setKitchen({ status: 'ready', id: k.id, name: k.name, catalog: await loadCatalog(db, k.id), ...(k.macro_padding ? { padding: k.macro_padding } : {}) });
     })().catch(e => setKitchen({ status: 'error', message: e instanceof Error ? e.message : String(e) }));
   }, [userId]);
 
@@ -41,8 +42,8 @@ export function App() {
   useEffect(() => {
     if (!reloads || kitchen.status !== 'ready') return;
     const id = kitchen.id;
-    loadCatalog(db, id).then(
-      catalog => setKitchen(k => (k.status === 'ready' && k.id === id ? { ...k, catalog } : k)),
+    Promise.all([loadCatalog(db, id), myKitchen()]).then(
+      ([catalog, k2]) => setKitchen(k => (k.status === 'ready' && k.id === id ? { ...k, catalog, ...(k2?.macro_padding ? { padding: k2.macro_padding } : {}) } : k)),
       e => setKitchen({ status: 'error', message: e instanceof Error ? e.message : String(e) }),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,6 +61,7 @@ export function App() {
           <nav className="tabs">
             <button className={tab === 'prep' ? 'active' : ''} onClick={() => setTab('prep')}>Prep list</button>
             <button className={tab === 'recipes' ? 'active' : ''} onClick={() => setTab('recipes')}>Recipes</button>
+            <button className={tab === 'nutrition' ? 'active' : ''} onClick={() => setTab('nutrition')}>Nutrition</button>
           </nav>
         )}
         <span className="spacer" />
@@ -75,6 +77,9 @@ export function App() {
           <div hidden={tab !== 'prep'}><Upload catalog={kitchen.catalog} history={uploadHistory(db, kitchen.id)} /></div>
           <div hidden={tab !== 'recipes'}>
             <Recipes catalog={kitchen.catalog} db={db} by={session.user.email ?? undefined} onChanged={() => setReloads(n => n + 1)} />
+          </div>
+          <div hidden={tab !== 'nutrition'}>
+            <Nutrition catalog={kitchen.catalog} db={db} kitchenId={kitchen.id} {...(kitchen.padding ? { padding: kitchen.padding } : {})} onChanged={() => setReloads(n => n + 1)} />
           </div>
         </>
       )}
