@@ -1,5 +1,6 @@
 -- Chicken Marsala Pasta with Broccoli + sweet potato container (kitchen 2026-10-22). Re-runnable; no deletes.
--- Chicken Marsala from the recipe card (ingredients only; steps are a standard method to confirm).
+-- Chicken Marsala from the recipe card, kitchen method: no dredge; chicken charred on the grill and finished in
+-- the oven; sauce thickened with cornstarch. Plate oz = chicken only (sauce isn't counted, like gravy).
 -- Chicken broth = Chicken Broth (Better Than Bouillon). Pasta = cavatappi, cooked per package;
 -- dry → cooked weight gain ×2 (same estimate as the other pastas).
 -- Plate 4/4/4: Chicken Marsala (with sauce), cavatappi, broccoli. 6 oz = 6 oz chicken marsala.
@@ -20,8 +21,8 @@ where not exists (select 1 from public.ingredients i where i.kitchen_id = k.id a
 with k as (select id from public.kitchens where name = 'TR Help')
 insert into public.kitchen_recipes (kitchen_id, name, method, notes, steps)
 select k.id, v.name, v.m, v.notes, v.steps from k, (values
-  ('Chicken Marsala', 'saute', 'Recipe card lists ingredients only; steps are a standard method — confirm.',
-   E'1. Season cutlets with salt and pepper; dredge in flour, shake off excess.\n2. Brown in olive oil, both sides, until cooked through. Remove.\n3. Sauté mushrooms until browned.\n4. Add Marsala, scrape up the browned bits, and reduce by about half. Add broth and simmer a few minutes.\n5. Off the heat, swirl in the cold butter. Return the chicken to the sauce.'),
+  ('Chicken Marsala', 'grill', 'Plate weight = the chicken only. Sauce is made with each batch: tossed with the pasta and spooned over the chicken (not counted in the weight, like gravy). No dredging: it reheats as mush.',
+   E'1. Season chicken with salt and pepper. Char on the grill, then finish in the oven.\n2. Caramelize the mushrooms in olive oil in the pan.\n3. Deglaze the pan drippings with the Marsala; reduce.\n4. Add broth; thicken with cornstarch.\n5. Off the heat, swirl in the cold butter.\n6. Toss the cooked cavatappi with sauce; spoon extra over the chicken.'),
   ('Cavatappi', 'boil', 'Plate: 4 oz cooked.',
    E'1. Cook per package directions, including water and salt.\n2. Toss with a little oil and cool spread out before packing.')
 ) v(name, m, notes, steps)
@@ -34,7 +35,7 @@ from k, (values
   ('Chicken Marsala', 1, 4::numeric, '',     'boneless skinless chicken breast cutlets, 5 oz each', 'Chicken breast, boneless skinless', 5 * 28.3495::numeric, '5 oz each'),
   ('Chicken Marsala', 2, 1,          'tsp',  'kosher salt',                     'Kosher salt',               3,     'estimate'),
   ('Chicken Marsala', 3, 0.5,        'tsp',  'black pepper',                    'Black pepper',              2.3,   'estimate'),
-  ('Chicken Marsala', 4, 0.5,        'cup',  'all-purpose flour (dredge)',      'All-purpose flour',         125,   'estimate'),
+  ('Chicken Marsala', 4, null,       '',     'cornstarch, to thicken the sauce', 'Cornstarch',               0,     'amount not set'),
   ('Chicken Marsala', 5, 2,          'tbsp', 'olive oil',                       'Olive oil',                 13.5,  'estimate'),
   ('Chicken Marsala', 6, 8,          'oz',   'cremini mushrooms, sliced',       'Cremini mushrooms, sliced', 28.3495, ''),
   ('Chicken Marsala', 7, 0.75,       'cup',  'dry Marsala wine',                'Marsala wine, dry',         236.6, 'estimate'),
@@ -92,3 +93,14 @@ join (values ('Chicken Marsala Pasta with Broccoli', '28 oz plate (single compar
 join public.container_types c on c.kitchen_id = (select id from k) and c.name = v.container
 where m.kitchen_id = (select id from k)
   and not exists (select 1 from public.size_packaging p where p.size_id = s.id and p.container_id = c.id);
+
+-- Kitchen method (2026-10-22): flour dredge → cornstarch; batch weight = cooked chicken only.
+update public.recipe_lines l set ingredient_id = i.id, amount = null, unit = '', raw_name = 'cornstarch, to thicken the sauce',
+  oz = 0, note = 'amount not set'
+from public.kitchen_recipes r, public.ingredients i, public.kitchens k
+where l.recipe_id = r.id and r.kitchen_id = k.id and k.name = 'TR Help' and r.name = 'Chicken Marsala' and l.position = 4
+  and i.kitchen_id = k.id and i.name = 'Cornstarch';
+update public.kitchen_recipes r set method = 'grill', finished_oz_measured = false,
+  finished_oz = (select l.oz * i.yield from public.recipe_lines l join public.ingredients i on i.id = l.ingredient_id
+                 where l.recipe_id = r.id and l.position = 1)
+from public.kitchens k where k.id = r.kitchen_id and k.name = 'TR Help' and r.name = 'Chicken Marsala';
