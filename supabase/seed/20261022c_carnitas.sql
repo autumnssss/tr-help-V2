@@ -1,5 +1,5 @@
 -- Carnitas (kitchen recipe, 2026-10-22). Re-runnable; no deletes.
--- The roast weight isn't known yet, so the pork line has no weight and the planner flags it until it's set.
+-- One roast = 3 lb (kitchen). Batch weight = shredded meat only (the cooking liquid isn't served), estimate.
 -- Instant Pot use needs an NSF variance; if it's denied, switch to an oven braise.
 -- Line weights computed here in SQL: amount × grams per unit (estimates) ÷ 28.3495 → oz.
 
@@ -19,7 +19,7 @@ where not exists (select 1 from public.ingredients i where i.kitchen_id = k.id a
 with k as (select id from public.kitchens where name = 'TR Help')
 insert into public.kitchen_recipes (kitchen_id, name, method, notes, steps)
 select k.id, 'Carnitas', 'braise',
-  'Roast weight not set yet; spice amounts are for one roast. Instant Pot needs an NSF variance; oven braise if not approved.',
+  'Instant Pot needs an NSF variance; oven braise if not approved. Batch weight = shredded meat only (cooking liquid not counted), estimate.',
   E'1. Season the pork shoulder with cumin, chili powder, salt and pepper. Add the beer.\n2. Instant Pot 3.5 hours, slow release. Allow more time if it isn''t fall-apart tender.\n3. Remove from the pot, remove excess fat and shred the meat. Taste.\n4. Toss with olive oil, and more salt, pepper or cumin if needed.\n5. Caramelize at 425°F to crisp. Check after 5 minutes; too long in the oven dries it out.'
 from k
 where not exists (select 1 from public.kitchen_recipes r where r.kitchen_id = k.id and r.name = 'Carnitas');
@@ -28,7 +28,7 @@ with k as (select id from public.kitchens where name = 'TR Help')
 insert into public.recipe_lines (kitchen_id, recipe_id, position, amount, unit, raw_name, note, ingredient_id, oz)
 select k.id, r.id, v.pos, v.amount, v.unit, v.line, v.note, i.id, round(v.amount * v.g / 28.3495, 3)
 from k, (values
-  (1, null::numeric, '',     'pork shoulder roast',        'Pork shoulder roast', null::numeric, 'weight not set'),
+  (1, 3::numeric,    'lb',   'pork shoulder roast',        'Pork shoulder roast', 453.592::numeric, 'kitchen'),
   (2, 1,             'can',  'beer (12 oz)',               'Beer (12 oz can)',    12 * 28.3495,  'estimate: 12 fl oz ≈ 12 oz'),
   (3, 3,             'tbsp', 'ground cumin',               'Ground cumin',        6,             'estimate'),
   (4, 1,             'tbsp', 'chili powder',               'Chili powder',        8,             'estimate'),
@@ -38,3 +38,8 @@ from k, (values
 join public.kitchen_recipes r on r.kitchen_id = (select id from k) and r.name = 'Carnitas'
 join public.ingredients i on i.kitchen_id = (select id from k) and lower(i.name) = lower(v.ingredient)
 where not exists (select 1 from public.recipe_lines l where l.recipe_id = r.id and l.position = v.pos);
+
+-- Batch weight: the roast's raw weight × its cook-loss yield.
+update public.kitchen_recipes r set finished_oz_measured = false,
+  finished_oz = (select l.oz * i.yield from public.recipe_lines l join public.ingredients i on i.id = l.ingredient_id where l.recipe_id = r.id and l.position = 1)
+from public.kitchens k where k.id = r.kitchen_id and k.name = 'TR Help' and r.name = 'Carnitas';
