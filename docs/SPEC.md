@@ -70,7 +70,7 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
   - **Bounce & Play**: the Elm address (3804 South Elm Place, Broken Arrow)
   - **Elevate**: the Sheridan address (8990 South Sheridan Road, Suite B, Tulsa)
   - **Deliveries**: every other address
-- Needs a Hotplate export with destination **and** size per order (the summary Orders export has item counts but no sizes). Labels are color-coded by hand with a highlighter to match the tickets.
+- Read from the **Hotplate ticket PDF** (one ticket per order: destination, items, size). The summary Orders export has no sizes. Totals are checked against the prep list; ticket lines the menu doesn't know are listed, never dropped. Labels are color-coded by hand with a highlighter to match the tickets.
 
 ### Stations (kitchen 2026-10-22)
 

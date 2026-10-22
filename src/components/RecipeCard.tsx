@@ -5,11 +5,11 @@ import { formatAmount, formatOz } from '../core/units';
 export function Card({ card, cards }: { card: RecipeCard; cards?: Record<string, RecipeCard> }) {
   return (
     <div className="card-recipe">
-      <div className="muted">× {card.batches} batches{card.finishedOz != null && <> → {formatOz(card.finishedOz)} cooked</>}</div>
+      <div className="muted">Recipe × {card.batches}{card.finishedOz != null && <> · makes about {formatOz(card.finishedOz)}</>}</div>
       <ul>
         {card.lines.map((l, i) => (
           <li key={i}>
-            <strong>{l.amount != null ? formatAmount(l.amount, l.unit) : l.oz != null ? formatOz(l.oz) : '—'}</strong> {l.name}
+            <strong>{l.amount != null ? formatAmount(l.amount, l.unit) : l.oz ? formatOz(l.oz) : '—'}</strong> {l.name}
             {l.sub && <Card card={l.sub} cards={cards} />}
           </li>
         ))}

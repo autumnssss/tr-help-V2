@@ -31,9 +31,10 @@ describe('recipes inside recipes', () => {
     const boil = p.prepSheet.find(g => g.method === 'boil')!;
     expect(boil.items).toEqual([{
       recipeId: 'boiled', name: 'Boiled Potatoes', finishedLb: 12,
-      raw: { name: 'potatoes', lb: 15 }, // peel 15 lb raw for 12 lb boiled at 80% yield
-      usedIn: [{ recipeId: 'mash', name: 'Mashed Potatoes', lb: 7 }, { recipeId: 'salad', name: 'Potato Salad', lb: 5 }],
-    }]); // Potato Salad (same station) is only nested, not listed twice
+      for: ['Mashed Potatoes', 'Potato Salad'],
+      // Potato Salad (same station) shows under the pot it's made from, with its own total, not as a second line.
+      nested: [{ recipeId: 'salad', name: 'Potato Salad', lb: 6.25, for: ['Ribs'] }], // 25 × 4 oz
+    }]);
     // A dish at a different station still gets its own line there.
     expect(p.prepSheet.find(g => g.method === 'bake')!.items.map(i => i.name)).toEqual(['Mashed Potatoes']);
     expect(p.unresolved).toEqual([]);
@@ -46,11 +47,9 @@ describe('recipes inside recipes', () => {
     expect(lb('butter')).toBe(0.88); // 126 oz mash × 4/36 = 14 oz
   });
 
-  it('shows plated-as-is next to the recipes that use it', () => {
+  it('says what a line is for: dishes it is plated in, then recipes it goes into', () => {
     const q = plan([order('Ribs', 25), order('Boiled potato side', 8)], catalog);
-    expect(q.prepSheet.find(g => g.method === 'boil')!.items[0]!.usedIn).toEqual([
-      { name: 'Plated as is', lb: 2 }, { recipeId: 'salad', name: 'Potato Salad', lb: 5 },
-    ]);
+    expect(q.prepSheet.find(g => g.method === 'boil')!.items[0]!.for).toEqual(['Boiled potato side', 'Potato Salad']);
   });
 
   it('flags a recipe loop instead of hanging', () => {

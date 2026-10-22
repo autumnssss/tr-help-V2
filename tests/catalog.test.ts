@@ -13,7 +13,7 @@ const rows: CatalogRows = {
   ],
   kitchen_recipes: [
     { id: 'r-pork', name: 'Smoked pork', method: 'smoke', finished_oz: null },
-    { id: 'r-carrot', name: 'Glazed carrots', method: null, finished_oz: null },
+    { id: 'r-carrot', name: 'Glazed carrots', method: 'roast', finished_oz: null },
   ],
   recipe_lines: [
     { recipe_id: 'r-pork', ingredient_id: 'i-pork', sub_recipe_id: null, raw_name: 'pork butt', oz: 16, position: 0 },
@@ -64,13 +64,20 @@ describe('database rows → plan', () => {
     expect(p.shoppingList.find(l => l.name === 'carrots')).toMatchObject({ oz: 50, packages: { count: 1, unit: '10 lb case' } });
   });
 
-  it('labels by menu name, skips cost-only packaging, groups unset methods', () => {
+  it('labels by menu name, skips cost-only packaging', () => {
     expect(p.labels).toEqual([
       { title: 'Mississippi Pork Roast', count: 7 },
       { title: 'Garden Vegetable and Sides', count: 2 },
     ]);
     expect(p.containers).toEqual([{ container: '24 oz divided', count: 6 }]);
-    expect(p.prepSheet.map(g => g.method)).toEqual(['smoke', 'unassigned']);
+    expect(p.prepSheet.map(g => g.method)).toEqual(['smoke', 'roast']);
+  });
+
+  it('flags a needed recipe with no station instead of listing it under no station', () => {
+    const noStation = { ...rows, kitchen_recipes: rows.kitchen_recipes.map(r => r.id === 'r-carrot' ? { ...r, method: null } : r) };
+    const q = plan([order('Garden Vegetable and Sides', 2, '2x Honey Glazed Carrots')], rowsToCatalog(noStation));
+    expect(q.unresolved).toEqual([{ kind: 'station', recipeId: 'r-carrot', lb: 1 }]); // 2 plates × 2 × 4 oz
+    expect(q.prepSheet).toEqual([]);
   });
 });
 

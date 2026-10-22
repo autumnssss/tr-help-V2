@@ -133,7 +133,9 @@ export type Unresolved =
   /** Recipes that use each other in a loop (A uses B uses A). */
   | { kind: 'cycle'; recipeId: string }
   /** Portion counted in pieces but the recipe has no weight per piece. */
-  | { kind: 'pieces'; recipeId: string };
+  | { kind: 'pieces'; recipeId: string }
+  /** Needed this order but has no station, so it would be on no station's list. */
+  | { kind: 'station'; recipeId: string; lb: number };
 
 /** Shopping list sections in the order you walk the store; anything else goes last. */
 export const STORE_ORDER = ['Produce', 'Meat & Seafood', 'Deli', 'Dairy & Eggs', 'Bakery', 'Frozen', 'Canned & Dry', 'Sauces & Condiments'];
@@ -152,13 +154,13 @@ export type PrepLine = {
   recipeId: string;
   name: string;
   finishedLb: number;
+  /** What it's for: the dishes it's plated in (short menu names) and the recipes it goes into. */
+  for: string[];
   /**
-   * For base recipes used inside other recipes: where the total goes, e.g. Potato Salad 5 lb,
-   * Mashed Potatoes 7 lb (weight of the base going into each). recipeId absent = plated as is.
+   * Dishes at the same station made from this one (Mashed Potatoes from Boiled Potatoes): they have no
+   * line of their own, so they show under it. lb = the dish's own total.
    */
-  usedIn?: { recipeId?: string; name: string; lb: number }[];
-  /** Raw weight to peel/trim when one ingredient is most of the recipe, e.g. 15 lb raw potatoes → 12 lb boiled. */
-  raw?: { name: string; lb: number };
+  nested?: { recipeId: string; name: string; lb: number; for: string[] }[];
   /** Pieces to plate, for portions counted in pieces (part of finishedLb). */
   pieces?: number;
   /** Shared pot or water within the station (Recipe.prepGroup). */
@@ -312,8 +314,14 @@ function buyLine(ing: Ingredient, oz: number): ShoppingLine {
   return line;
 }
 
-function sizeKey(variation: string, sizes: Record<string, Size>): string | undefined {
-  const v = normalizeName(variation);
+/** Short dish name for "for …": the menu title up to " with " (Carnitas with Elote… → Carnitas). */
+export function dishName(title: string): string {
+  return title.trim().split(/\s+with\s+/i)[0]!.trim();
+}
+
+/** Which of a meal's sizes a Hotplate variation is ('regular', 'family', '6 oz', a flavor…), if any. */
+export function sizeKey(variation: string, sizes: Record<string, Size>): string | undefined {
+  const v = normalizeName(variation).replace(/^(\d+(?:\.\d+)?)\s*0z$/, '$1 oz'); // "6 0Z" typed with a zero
   if (v === '') return sizes.regular ? 'regular' : undefined;
   if (sizes[v]) return v;
   if (v.startsWith('family') && sizes.family) return 'family';
@@ -345,6 +353,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
   const labels = new Map<string, number>();
   const prepPieces = new Map<string, number>(); // recipeId → pieces still to plate
   const prepOnlyCounts = new Map<string, number>(); // JSON [title, variation] → count
+  const dishes = new Map<string, Set<string>>(); // recipeId → menu dishes it's plated in (still to prep)
   const containers = new Map<string, number>();
   const add = (m: Map<string, number>, k: string, n: number) => m.set(k, (m.get(k) ?? 0) + n);
 
@@ -397,6 +406,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
       }
       add(shopOz, p.recipeId, oz! * o.quantity);
       add(prepOz, p.recipeId, oz! * o.remaining);
+      if (o.remaining > 0) dishes.set(p.recipeId, (dishes.get(p.recipeId) ?? new Set()).add(dishName(item.titles[0] ?? o.item)));
       countPortion(p.recipeId, sizeLabel(p), oz!, portionCount);
     }
     for (const pk of packaging) add(containers, pk.container, pk.qty * o.quantity);
@@ -497,37 +507,28 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     for (const parentId of parents.keys()) if (recipes.get(parentId)?.method === station) nested.add(parentId);
   }
 
-  // As-purchased weight of the ingredient that is ≥75% of a recipe's own raw weight (no buying buffer).
-  function mainRawIngredient(recipe: Recipe, finishedOz: number): PrepLine['raw'] {
-    const own = recipe.lines.filter(l => !l.recipeId);
-    if (!own.length || own.some(l => l.oz === null || !l.ingredientId || !ingredients.has(l.ingredientId))) return undefined;
-    if (recipe.lines.some(l => l.recipeId)) return undefined; // the raw work happens in the sub-recipe
-    const batch = finishedBatchOz(recipe, ingredients);
-    if (batch <= 0) return undefined;
-    const total = own.reduce((sum, l) => sum + l.oz!, 0);
-    const main = own.reduce((a, b) => (b.oz! > a.oz! ? b : a));
-    if (main.oz! < 0.75 * total) return undefined;
-    return { name: ingredients.get(main.ingredientId!)!.name, lb: round2((main.oz! * finishedOz) / batch / 16) };
-  }
+  // What each line is for: dishes it's plated in, then recipes it goes into.
+  const forOf = (recipeId: string) => [...new Set([
+    ...[...(dishes.get(recipeId) ?? [])].sort(),
+    ...[...(prep.usedIn.get(recipeId)?.keys() ?? [])].map(id => recipes.get(id)?.name ?? id).sort(),
+  ])];
 
   const methods = new Map<CookingMethod, PrepLine[]>();
   for (const [recipeId, oz] of prep.total) {
     const recipe = recipes.get(recipeId);
     if (!recipe || oz <= 0 || nested.has(recipeId) || recipe.onPrepSheet === false) continue;
+    // No station means no station's list: flag it at the top instead of a catch-all at the bottom.
+    if (recipe.method === 'unassigned') { flag({ kind: 'station', recipeId, lb: round2(oz / 16) }); continue; }
     const list = methods.get(recipe.method) ?? [];
-    const line: PrepLine = { recipeId, name: recipe.name, finishedLb: round2(oz / 16) };
-    const raw = mainRawIngredient(recipe, oz);
-    if (raw) line.raw = raw;
+    const line: PrepLine = { recipeId, name: recipe.name, finishedLb: round2(oz / 16), for: forOf(recipeId) };
     const pieces = prepPieces.get(recipeId);
     if (pieces) line.pieces = pieces;
     if (recipe.prepGroup) line.group = recipe.prepGroup;
-    const parents = prep.usedIn.get(recipeId);
-    if (parents) {
-      const plated = prepOz.get(recipeId) ?? 0;
-      line.usedIn = [
-        ...[...parents].map(([id, pOz]) => ({ recipeId: id, name: recipes.get(id)?.name ?? id, lb: round2(pOz / 16) })),
-        ...(plated > 0 ? [{ name: 'Plated as is', lb: round2(plated / 16) }] : []),
-      ].sort((a, b) => a.name.localeCompare(b.name));
+    const sameStation = [...(prep.usedIn.get(recipeId)?.keys() ?? [])].filter(id => nested.has(id) && recipes.get(id)?.method === recipe.method);
+    if (sameStation.length) {
+      line.nested = sameStation
+        .map(id => ({ recipeId: id, name: recipes.get(id)?.name ?? id, lb: round2((prep.total.get(id) ?? 0) / 16), for: forOf(id) }))
+        .sort((a, b) => a.name.localeCompare(b.name));
     }
     list.push(line);
     methods.set(recipe.method, list);

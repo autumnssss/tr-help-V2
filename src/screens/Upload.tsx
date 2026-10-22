@@ -1,5 +1,8 @@
 import { useMemo, useState, type DragEvent } from 'react';
 import { parseHotplateCsv, type OrderLine } from '../core/hotplate';
+import { labelsByDestination, type LabelsByDestination } from '../core/labels';
+import { parseTickets } from '../core/tickets';
+import { pdfTextItems } from '../lib/pdf';
 import { plan, type Catalog, type Plan, type RecipeCard, type ShoppingLine, type Unresolved } from '../core/planner';
 import { Card } from '../components/RecipeCard';
 import { containsOrders, sameOrders, subtractOrders } from '../core/weeks';
@@ -16,7 +19,7 @@ type Loaded = { fileName: string; raw: OrderLine[]; previous?: PastUpload };
 
 const METHOD_LABEL: Record<string, string> = {
   smoke: 'Smoke', braise: 'Braise', boil: 'Boil', simmer: 'Simmer', grill: 'Grill', roast: 'Roast',
-  saute: 'Sauté', bake: 'Bake', 'no-cook': 'No-cook', unassigned: 'Cooking method not set',
+  saute: 'Sauté', bake: 'Bake', 'no-cook': 'No-cook',
 };
 
 function describe(u: Unresolved, recipeName: (id: string) => string): string {
@@ -29,6 +32,7 @@ function describe(u: Unresolved, recipeName: (id: string) => string): string {
     case 'weight': return `${recipeName(u.recipeId)}: “${u.ingredient}” has no weight (needs weight per cup)`;
     case 'pieces': return `${recipeName(u.recipeId)}: portion is in pieces but no weight per piece is set`;
     case 'cycle': return `${recipeName(u.recipeId)} is used inside itself (recipe loop)`;
+    case 'station': return `${recipeName(u.recipeId)} (${u.lb.toFixed(2)} lb) has no station, so it's on no station's prep list. Set its cooking method.`;
   }
 }
 
@@ -58,6 +62,20 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
   const [dragging, setDragging] = useState(false);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [openCard, setOpenCard] = useState<string | null>(null);
+  const [tickets, setTickets] = useState<{ fileName: string; labels: LabelsByDestination } | null>(null);
+  const [ticketError, setTicketError] = useState<string | null>(null);
+  async function readTickets(file: File | undefined) {
+    if (!file) return;
+    setTicketError(null);
+    try {
+      const parsed = parseTickets(await pdfTextItems(file));
+      if (!parsed.length) throw new Error('No Hotplate tickets found in that PDF.');
+      setTickets({ fileName: file.name, labels: labelsByDestination(parsed, catalog) });
+    } catch (e) {
+      setTickets(null);
+      setTicketError(e instanceof Error ? e.message : String(e));
+    }
+  }
   const cardToggle = (recipeId: string | undefined) =>
     recipeId && result?.recipeCards[recipeId]
       ? <button className="btn link small no-print" onClick={() => setOpenCard(openCard === recipeId ? null : recipeId)}>{openCard === recipeId ? 'Hide recipe' : 'Recipe'}</button>
@@ -179,7 +197,7 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
           {!r.complete && (
             <section className="card warn">
               <h3>Needs setup ({r.unresolved.length})</h3>
-              <p>These aren't in the totals below yet. Lists are incomplete until each one is set up.</p>
+              <p>Each of these is missing from at least one list below (shopping, prep or labels) until it's set up.</p>
               <ul>{r.unresolved.map((u, i) => <li key={i}>{describe(u, recipeName)}</li>)}</ul>
             </section>
           )}
@@ -246,34 +264,33 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                     {g.items.flatMap((i, n) => {
                       const header = i.group && i.group !== g.items[n - 1]?.group
                         ? [<tr key={`grp:${i.group}`} className="pot"><td colSpan={3}>{i.group}</td></tr>] : [];
-                      // A base recipe reads as the raw ingredient going into the pot.
-                      const base = i.raw && i.usedIn;
-                      const single = base && i.usedIn!.length === 1 ? i.usedIn![0]! : undefined;
-                      const title = base ? `${i.raw!.name} — ${i.raw!.lb.toFixed(2)} lb raw` : i.name;
+                      // Every line: name · amount · what it's for · Recipe (the scaled card has the starting amounts).
                       const rows = [
                         <tr key={i.recipeId} className={done.has(i.recipeId) ? 'done' : ''}>
-                          {check(i.recipeId, title)}
+                          {check(i.recipeId, i.name)}
                           <td>
-                            {title}
-                            {single && <div className="raw">for {single.name} {cardToggle(single.recipeId)}</div>}
-                            {!base && i.raw && <div className="raw">from {i.raw.lb.toFixed(2)} lb raw {i.raw.name}</div>}
+                            <strong>{i.name}</strong> {cardToggle(i.recipeId)}
+                            {i.for.length > 0 && <div className="raw">for {i.for.join(', ')}</div>}
                             {i.pieces && <div className="raw">plate {i.pieces} pieces</div>}
-                            {cardToggle(i.recipeId)}
                           </td>
-                          <td className="num">{base ? '→ ' : ''}{i.finishedLb.toFixed(2)} lb</td>
+                          <td className="num">{i.finishedLb.toFixed(2)} lb</td>
                         </tr>,
                         ...cardRow(i.recipeId, i.recipeId),
-                        ...(single ? cardRow(`${i.recipeId}>single`, single.recipeId) : []),
-                        ...(single ? [] : (i.usedIn ?? []).flatMap(u => {
-                          const id = `${i.recipeId}>${u.recipeId ?? 'plated'}`;
+                        // Dishes at this station made from it (Mashed Potatoes from Boiled Russet Potatoes).
+                        ...(i.nested ?? []).flatMap(d => {
+                          const id = `${i.recipeId}>${d.recipeId}`;
                           return [
                             <tr key={id} className={`used-in${done.has(id) ? ' done' : ''}`}>
                               <td className="check" />
-                              <td><span className="nest">{check(id, `${i.name} for ${u.name}`, true)}for {u.name}</span> {cardToggle(u.recipeId)}</td><td className="num">{u.lb.toFixed(2)} lb</td>
+                              <td>
+                                <span className="nest">{check(id, d.name, true)}<strong>{d.name}</strong></span> {cardToggle(d.recipeId)}
+                                {d.for.length > 0 && <div className="raw">for {d.for.join(', ')}</div>}
+                              </td>
+                              <td className="num">{d.lb.toFixed(2)} lb</td>
                             </tr>,
-                            ...cardRow(id, u.recipeId),
+                            ...cardRow(id, d.recipeId),
                           ];
-                        })),
+                        }),
                       ];
                       return [...header, ...rows];
                     })}
@@ -302,6 +319,19 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
             </section>
           )}
 
+          <section className="card">
+            <h3>Labels by destination</h3>
+            <div className="no-print">
+              <p className="muted">Drop the Hotplate ticket PDF to split labels into Bounce &amp; Play, Elevate and Deliveries.</p>
+              <label className="btn">
+                Choose ticket PDF
+                <input type="file" accept=".pdf,application/pdf" hidden onChange={e => { void readTickets(e.target.files?.[0]); e.target.value = ''; }} />
+              </label>
+              {ticketError && <p className="error">{ticketError}</p>}
+            </div>
+            {tickets && <DestinationTable fileName={tickets.fileName} labels={tickets.labels} prepList={r.labels} />}
+          </section>
+
           <div className="two-col">
             <section className="card">
               <h3>Labels <span className="muted">({totalLabels})</span></h3>
@@ -323,5 +353,51 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
         </>
       )}
     </main>
+  );
+}
+
+/** Labels per meal and destination, by size. Family counts labels (3 per family order). */
+function DestinationTable({ fileName, labels, prepList }: {
+  fileName: string; labels: LabelsByDestination; prepList: { title: string; count: number }[];
+}) {
+  const fromPrep = new Map(prepList.map(l => [l.title, l.count]));
+  // The tickets and the prep list should agree; if not, say where (a different day, an edited order…).
+  const differ = [...new Set([...fromPrep.keys(), ...labels.meals.map(m => m.title)])]
+    .map(title => ({ title, tickets: labels.meals.find(m => m.title === title)?.total ?? 0, prep: fromPrep.get(title) ?? 0 }))
+    .filter(d => d.tickets !== d.prep);
+  const cell = (n: number | undefined) => (n ? n : '');
+  return (
+    <>
+      <p className="muted">{fileName} · {labels.totals.map(t => `${t.destination} ${t.total}`).join(' · ')}</p>
+      {(differ.length > 0 || labels.unmatched.length > 0) && (
+        <div className="warn">
+          {differ.length > 0 && <>
+            <strong>Tickets and prep list don't match:</strong>
+            <ul>{differ.map(d => <li key={d.title}>{d.title}: tickets {d.tickets}, prep list {d.prep}</li>)}</ul>
+          </>}
+          {labels.unmatched.length > 0 && <>
+            <strong>Not counted (not on the menu, or size not set up):</strong>
+            <ul>{labels.unmatched.map((u, i) => <li key={i}>{u.ticket}: {u.item}{u.variation && ` (${u.variation})`}</li>)}</ul>
+          </>}
+        </div>
+      )}
+      <table className="dest">
+        <thead>
+          <tr><th />{labels.columns.map(c => <th key={c} className="num">{c}</th>)}<th className="num">Total</th></tr>
+        </thead>
+        <tbody>
+          {labels.meals.flatMap(m => [
+            <tr key={m.title} className="aisle"><td colSpan={labels.columns.length + 1}>{m.title}</td><td className="num">{m.total}</td></tr>,
+            ...m.byDestination.map(d => (
+              <tr key={`${m.title}|${d.destination}`}>
+                <td>{d.destination}</td>
+                {labels.columns.map(c => <td key={c} className="num">{cell(d.counts[c])}</td>)}
+                <td className="num">{d.total}</td>
+              </tr>
+            )),
+          ])}
+        </tbody>
+      </table>
+    </>
   );
 }

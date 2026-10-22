@@ -14,3 +14,6 @@ Ideas captured as they come up. Reviewed after milestone 1 is in real weekly use
 | 2026-10-09 | Equipment per station (pots, pans, oven temps) and time-of-day schedule | After a few weeks on station groups |
 | 2026-10-15 | Hotplate prep list can span two weeks (same window date on every line): app saves each upload and leaves out the last one's orders when the new file still has them; items checklist to leave out strays | Built |
 | 2026-10-15 | Volume → weight conversions (cups, tbsp) from a coded density table per ingredient instead of hand-entered oz | Next |
+| 2026-10-21 | Labels by destination (Bounce & Play / Elevate / Deliveries) × size (Reg / 6 oz / 8 oz / Family labels), from the Hotplate ticket PDF; checked against the prep list | Built, not deployed |
+| 2026-10-22 | Prep list lines read name · amount · for which dishes · Recipe; starting amounts live on the scaled recipe card; no "from X raw" lines | Built, not deployed |
+| 2026-10-22 | An item with no station goes in Needs setup, never in a catch-all at the bottom | Built, not deployed |
