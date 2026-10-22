@@ -70,7 +70,7 @@ select pg_temp.container('Plastic wrap', true);
 
 -- Component recipes with their primary cooking method (null = not set yet).
 select pg_temp.recipe(n, m) from (values
-  ('Mississippi Pork Roast', 'braise'), ('Mashed Potatoes', 'boil'), ('Boiled Potatoes', 'boil'), ('Honey Glazed Carrots', null),
+  ('Mississippi Pork Roast', 'braise'), ('Mashed Potatoes', 'boil'), ('Boiled Russet Potatoes', 'boil'), ('Honey Glazed Carrots', null),
   ('Shrimp', 'saute'), ('Cheesy Grits', 'boil'), ('Brussels Sprouts', 'roast'),
   ('Ribs', 'smoke'), ('Corn Niblets', null), ('Potato Salad', 'boil'), ('BBQ Sauce', 'no-cook'),
   ('Pulled Chicken', 'smoke'), ('Smoked Brisket', 'smoke'),

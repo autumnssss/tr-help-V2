@@ -52,7 +52,7 @@ where l.recipe_id = pg_temp.recipe('German Potato Salad') and l.ingredient_id = 
 
 -- ── Stations and pots ───────────────────────────────────────────────────────
 update public.kitchen_recipes set prep_group = 'Salted water'
-where kitchen_id = pg_temp.k() and name in ('Boiled Potatoes', 'Boiled Red Potatoes', 'Green Beans', 'Broccoli', 'Broccoli Rabe');
+where kitchen_id = pg_temp.k() and name in ('Boiled Russet Potatoes', 'Boiled Red Potatoes', 'Green Beans', 'Broccoli', 'Broccoli Rabe');
 update public.kitchen_recipes set prep_group = 'Rice' where kitchen_id = pg_temp.k() and name = 'Cooked Rice';
 update public.kitchen_recipes set method = 'simmer'
 where kitchen_id = pg_temp.k() and name in ('Chicken Noodle Soup', 'Broccoli Cheddar Soup', 'Gravy', 'Cheesy Grits');

@@ -121,12 +121,12 @@ select pg_temp.ingredient('Cilantro', 0.60);
 
 -- ── Recipes (estimates) ─────────────────────────────────────────────────────
 -- 12.5 lb raw russets → 10 lb boiled.
-select pg_temp.estimate(pg_temp.recipe('Boiled Potatoes', 'boil'), array[['Russet potatoes','200','ing']]);
+select pg_temp.estimate(pg_temp.recipe('Boiled Russet Potatoes', 'boil'), array[['Russet potatoes','200','ing']]);
 -- ~96% potatoes, per the kitchen.
 select pg_temp.estimate(pg_temp.recipe('Mashed Potatoes', 'boil'), array[
-  ['Boiled Potatoes','160','sub'], ['Butter','4','ing'], ['Heavy cream','2','ing'], ['Kosher salt','0.5','ing'], ['Black pepper','0.1','ing']]);
+  ['Boiled Russet Potatoes','160','sub'], ['Butter','4','ing'], ['Heavy cream','2','ing'], ['Kosher salt','0.5','ing'], ['Black pepper','0.1','ing']]);
 select pg_temp.estimate(pg_temp.recipe('Potato Salad', 'boil'), array[
-  ['Boiled Potatoes','160','sub'], ['Mayonnaise','4','ing'], ['Yellow mustard','1.5','ing'], ['Kosher salt','0.5','ing']]);
+  ['Boiled Russet Potatoes','160','sub'], ['Mayonnaise','4','ing'], ['Yellow mustard','1.5','ing'], ['Kosher salt','0.5','ing']]);
 select pg_temp.estimate(pg_temp.recipe('Green Beans', 'boil'), array[['Green beans','16','ing']]);
 select pg_temp.estimate(pg_temp.recipe('Broccoli', 'boil'), array[['Broccoli crowns','16','ing']]);
 select pg_temp.estimate(pg_temp.recipe('Broccoli Rabe', 'boil'), array[['Broccoli rabe (or crowns)','16','ing']]);

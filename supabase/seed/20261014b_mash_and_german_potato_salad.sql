@@ -38,7 +38,7 @@ end $$;
 
 -- Mashed Potatoes: per 5 lb boiled potatoes.
 select pg_temp.set_lines(pg_temp.recipe('Mashed Potatoes'), 'estimate', array[
-  ['5',    'lb',   'boiled potatoes', '80',   'Boiled Potatoes', 'sub'],
+  ['5',    'lb',   'boiled potatoes', '80',   'Boiled Russet Potatoes', 'sub'],
   ['4',    'oz',   'butter',          '4',    'Butter',          'ing'],
   ['5',    'oz',   'heavy cream',     '5',    'Heavy cream',     'ing'],
   ['1.5',  'tsp',  'kosher salt',     '0.25', 'Kosher salt',     'ing'],
