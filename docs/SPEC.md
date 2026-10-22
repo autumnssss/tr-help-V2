@@ -72,6 +72,14 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
   - **Deliveries**: every other address
 - Needs a Hotplate export with destination **and** size per order (the summary Orders export has item counts but no sizes). Labels are color-coded by hand with a highlighter to match the tickets.
 
+### Plate weight vs. what's bought (kitchen 2026-10-22)
+
+- Plate weights (4/4/4, 6 oz, family) count the main components only. **Sauces, gravies and garnish are not counted**
+  (Marsala sauce, gravy, fajita peppers & onions), but they are still portions: bought, prepped and costed.
+- **6 oz** raises the protein only; sides stay the same. A two-protein plate splits the extra evenly.
+- **Garnish that belongs to one dish is costed to that dish** (fajita peppers & onions). Garnish used in small
+  amounts everywhere (parsley) is overhead. Applies to cost per plate (Milestone 2).
+
 ### Prep sheet
 
 - One line per component recipe with the **total** finished weight needed across all meals. No per-meal breakdown: the kitchen cooks the total, plating divides it.
