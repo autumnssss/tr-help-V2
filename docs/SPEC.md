@@ -72,6 +72,16 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
   - **Deliveries**: every other address
 - Read from the **Hotplate ticket PDF** (one ticket per order: destination, items, size). The summary Orders export has no sizes. Totals are checked against the prep list; ticket lines the menu doesn't know are listed, never dropped. Labels are color-coded by hand with a highlighter to match the tickets.
 
+### Nutrition labels (kitchen 2026-10-23)
+
+- **One panel per meal**, for its regular plate (the standard 4/4/4 oz serving); the same panel goes on every
+  label for that meal (F/6/8 stay hand-marked). Calories, protein, carbs, fat.
+- From ingredient data (per 100 g, as bought or as cooked) × recipe weights × portions. An ingredient with no
+  data blocks the panel; nothing is guessed.
+- **Padding: +10% calories, carbs and fat; protein 0%.** FDA compliance (21 CFR 101.9(g)) lets actual calories
+  and fat run up to 20% over the label but requires actual protein to be at least 80% of the label, so
+  overstating calories/carbs/fat is safe and overstating protein is not. Rounded per US label rules.
+
 ### Stations (kitchen 2026-10-22)
 
 - **Every item on the menu has a station.** An item without one goes in **Needs setup** (top of the page), never
