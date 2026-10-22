@@ -69,12 +69,34 @@ begin
   get diagnostics n = row_count; assert n = 2, 'can delete own rows';
 end $$;
 
+-- Editing a recipe in the app: one save replaces the lines and keeps the old version.
+do $$
+declare r uuid; n int; v jsonb;
+begin
+  r := public.save_recipe('{"name": "Edited Beans", "method": "simmer"}', '[{"amount": 1, "unit": "lb", "raw_name": "beans", "oz": 16}]', 'owner@example.com');
+  select count(*) into n from public.recipe_versions where recipe_id = r; assert n = 0, 'a new recipe has no earlier version';
+  perform public.save_recipe(jsonb_build_object('id', r, 'name', 'Edited Beans', 'method', 'boil', 'prep_group', 'Salted water'),
+    '[{"amount": 2, "unit": "lb", "raw_name": "beans", "oz": 32}, {"amount": 1, "unit": "tsp", "raw_name": "salt", "oz": null}]', 'owner@example.com');
+  select count(*) into n from public.recipe_lines where recipe_id = r; assert n = 2, 'lines replaced';
+  assert (select method from public.kitchen_recipes where id = r) = 'boil', 'recipe updated';
+  select lines into v from public.recipe_versions where recipe_id = r;
+  assert jsonb_array_length(v) = 1 and (v->0->>'oz')::numeric = 16, 'old version kept';
+  assert (select saved_by_email from public.recipe_versions where recipe_id = r) = 'owner@example.com', 'who saved it';
+  perform set_config('rls.r_edit', r::text, false);
+end $$;
+
 -- As a signed-in user with no kitchen.
 select set_config('request.jwt.claim.sub', current_setting('rls.u3'), false);
 do $$
 declare n int;
 begin
   select count(*) into n from public.kitchen_recipes; assert n = 0, 'stranger sees nothing';
+  select count(*) into n from public.recipe_versions; assert n = 0, 'stranger sees no history';
+  begin
+    perform public.save_recipe(jsonb_build_object('id', current_setting('rls.r_edit'), 'name', 'Hacked'), '[]');
+    assert false, 'stranger edit must fail';
+  exception when raise_exception then null;
+  end;
   begin
     insert into public.ingredients (name, yield) values ('x', 1);
     assert false, 'stranger insert must fail';

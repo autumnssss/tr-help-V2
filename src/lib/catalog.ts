@@ -5,9 +5,9 @@ import { normalizeName } from '../core/hotplate';
 import type { Catalog, CookingMethod, MenuItem, Pack, Size } from '../core/planner';
 
 export type CatalogRows = {
-  ingredients: { id: string; name: string; yield: number; yield_source: 'usda' | 'kitchen' | 'estimate'; buffer: number; purchase_unit: string | null; purchase_oz: number | null; staple?: boolean; category?: string | null }[];
+  ingredients: { id: string; name: string; yield: number; yield_source: 'usda' | 'kitchen' | 'estimate'; buffer: number; purchase_unit: string | null; purchase_oz: number | null; staple?: boolean; category?: string | null; grams_per_cup?: number | null; grams_per_each?: number | null }[];
   kitchen_recipes: { id: string; name: string; method: CookingMethod | null; finished_oz: number | null; oz_per_piece?: number | null; prep_group?: string | null; on_prep_sheet?: boolean; steps?: string | null; notes?: string | null; finished_oz_measured?: boolean; yield_count?: number | null; yield_unit?: string | null; archived?: boolean }[];
-  recipe_lines: { recipe_id: string; ingredient_id: string | null; sub_recipe_id: string | null; raw_name: string; oz: number | null; position: number; amount?: number | null; unit?: string | null }[];
+  recipe_lines: { recipe_id: string; ingredient_id: string | null; sub_recipe_id: string | null; raw_name: string; oz: number | null; position: number; amount?: number | null; unit?: string | null; note?: string | null }[];
   container_types: { id: string; name: string; cost_only: boolean }[];
   menu_items: { id: string; name: string; kind: 'meal' | 'sidePlate' | 'prepOnly'; side_oz: number | null }[];
   menu_titles: { menu_item_id: string; title: string }[];
@@ -72,6 +72,8 @@ export function rowsToCatalog(rows: CatalogRows): Catalog {
       ...(i.purchase_unit && i.purchase_oz ? { purchase: { unit: i.purchase_unit, oz: Number(i.purchase_oz) } } : {}),
       ...(i.staple ? { staple: true } : {}),
       ...(i.category ? { category: i.category } : {}),
+      ...(i.grams_per_cup ? { gramsPerCup: Number(i.grams_per_cup) } : {}),
+      ...(i.grams_per_each ? { gramsPerEach: Number(i.grams_per_each) } : {}),
     })),
     // Archived recipes (no longer made) don't show or plan.
     recipes: rows.kitchen_recipes.filter(r => !r.archived).map(r => ({
@@ -95,6 +97,7 @@ export function rowsToCatalog(rows: CatalogRows): Catalog {
           oz: num(l.oz),
           amount: l.amount == null ? null : Number(l.amount),
           unit: l.unit ?? '',
+          ...(l.note ? { note: l.note } : {}),
         })),
     })),
     menu,

@@ -23,6 +23,9 @@ export type Ingredient = {
   staple?: boolean;
   /** Store section, e.g. 'Produce', 'Meat & Seafood'. Shopping list is grouped in STORE_ORDER. */
   category?: string;
+  /** Weight of 1 cup (prepped) and of 1 each, entered by the kitchen; used to turn recipe amounts into weight. */
+  gramsPerCup?: number;
+  gramsPerEach?: number;
 };
 
 export type Recipe = {
@@ -64,6 +67,8 @@ export type RecipeLine = {
   /** As written in the recipe, e.g. 0.75 'cup' (used for scaled recipe cards). */
   amount?: number | null;
   unit?: string;
+  /** e.g. 'diced', 'optional'. */
+  note?: string;
 };
 
 /** A recipe multiplied to what's still to prep: batches = cooked oz needed ÷ cooked oz per batch. */

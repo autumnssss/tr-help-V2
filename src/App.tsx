@@ -18,6 +18,7 @@ export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [kitchen, setKitchen] = useState<KitchenState>({ status: 'loading' });
   const [tab, setTab] = useState<'prep' | 'recipes'>('prep');
+  const [reloads, setReloads] = useState(0); // bump to reload the catalog after an edit
 
   useEffect(() => {
     void db.auth.getSession().then(({ data }) => setSession(data.session));
@@ -35,6 +36,17 @@ export function App() {
       setKitchen({ status: 'ready', id: k.id, name: k.name, catalog: await loadCatalog(db, k.id) });
     })().catch(e => setKitchen({ status: 'error', message: e instanceof Error ? e.message : String(e) }));
   }, [userId]);
+
+  // After an edit: reload recipes and menu in place (no "Loading kitchen…" flash).
+  useEffect(() => {
+    if (!reloads || kitchen.status !== 'ready') return;
+    const id = kitchen.id;
+    loadCatalog(db, id).then(
+      catalog => setKitchen(k => (k.status === 'ready' && k.id === id ? { ...k, catalog } : k)),
+      e => setKitchen({ status: 'error', message: e instanceof Error ? e.message : String(e) }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloads]);
 
   if (configError) return <main className="login"><p className="error">{configError}</p></main>;
   if (session === undefined) return null;
@@ -61,7 +73,9 @@ export function App() {
         <>
           {/* Both stay mounted so switching tabs keeps the uploaded file. */}
           <div hidden={tab !== 'prep'}><Upload catalog={kitchen.catalog} history={uploadHistory(db, kitchen.id)} /></div>
-          <div hidden={tab !== 'recipes'}><Recipes catalog={kitchen.catalog} /></div>
+          <div hidden={tab !== 'recipes'}>
+            <Recipes catalog={kitchen.catalog} db={db} by={session.user.email ?? undefined} onChanged={() => setReloads(n => n + 1)} />
+          </div>
         </>
       )}
     </>
