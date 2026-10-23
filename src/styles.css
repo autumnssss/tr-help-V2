@@ -125,3 +125,12 @@ details.items summary { cursor: pointer; font-weight: 600; }
 .editor .ask input.amt { width: 5em; font: inherit; padding: 3px 5px; }
 .history { margin-top: 8px; }
 .label-line { font-size: 1.05em; margin: 4px 0; }
+
+/* Report sections open and close from their title. */
+details.section > summary, details.items > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+details.section > summary::-webkit-details-marker, details.items > summary::-webkit-details-marker { display: none; }
+details.section > summary::before, details.items > summary::before { content: '▸'; color: var(--muted); transition: transform 0.15s; }
+details.section[open] > summary::before, details.items[open] > summary::before { transform: rotate(90deg); }
+details.section > summary h3 { margin: 0; }
+details.section[open] > summary { margin-bottom: 8px; }
+@media print { details.section > summary::before { content: none; } }

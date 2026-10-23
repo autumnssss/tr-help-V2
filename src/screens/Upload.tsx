@@ -1,4 +1,4 @@
-import { useMemo, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from 'react';
 import { parseHotplateCsv, type OrderLine } from '../core/hotplate';
 import { labelsByDestination, type LabelsByDestination } from '../core/labels';
 import { parseTickets } from '../core/tickets';
@@ -47,10 +47,24 @@ const loadHidden = (): Set<SectionId> => {
   try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]') as SectionId[]); } catch { return new Set(); }
 };
 
+/** A report section that opens and closes on screen (open to start). Everything prints open. */
+function Section({ title, children }: { title: ReactNode; children: ReactNode }) {
+  return (
+    <details className="card section" open>
+      <summary><h3>{title}</h3></summary>
+      {children}
+    </details>
+  );
+}
+
 const fmtOz = (oz: number) => `${Number.isInteger(oz) ? oz : oz.toFixed(1)} oz`;
 
 /** Counted items read as a count ("7 eggs", "3 packs"); everything else as weight. */
-const amount = (l: ShoppingLine) => (l.packages ? `${l.packages.count} ${l.packages.unit}` : weight(l.oz));
+const amount = (l: ShoppingLine) => (l.packages ? `${l.packages.count} ${one(l.packages.count, l.packages.unit)}` : weight(l.oz));
+
+/** "1 bunch", "1 block", "2 bunches": units are stored plural. */
+const one = (count: number, unit: string) =>
+  count !== 1 ? unit : unit.replace(/(ch|sh|ss|x)es$/, '$1').replace(/([^s])s$/, '$1');
 
 /** Under a pound reads better in ounces (garlic 0.2 oz, not 0.01 lb). */
 const weight = (oz: number) => (oz < 16 ? `${oz < 1 ? oz.toFixed(2) : oz.toFixed(1)} oz` : `${(oz / 16).toFixed(2)} lb`);
@@ -62,6 +76,15 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [hidden, setHidden] = useState<Set<SectionId>>(loadHidden);
   const show = (id: SectionId) => !hidden.has(id);
+  // Closed sections still print: open them for printing, then put them back.
+  useEffect(() => {
+    let closed: HTMLDetailsElement[] = [];
+    const before = () => { closed = [...document.querySelectorAll<HTMLDetailsElement>('details.section:not([open])')]; closed.forEach(d => { d.open = true; }); };
+    const after = () => { closed.forEach(d => { d.open = false; }); closed = []; };
+    window.addEventListener('beforeprint', before);
+    window.addEventListener('afterprint', after);
+    return () => { window.removeEventListener('beforeprint', before); window.removeEventListener('afterprint', after); };
+  }, []);
   function toggleSection(id: SectionId) {
     const next = new Set(hidden);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -232,8 +255,7 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
             </section>
           )}
 
-          {show('totals') && <section className="card">
-            <h3>Totals by item</h3>
+          {show('totals') && <Section title="Totals by item">
             <p className="muted">Every portion sold (Quantity) × how many = total cooked weight.</p>
             {r.components.filter(c => c.portions.length).length === 0 ? <p className="muted">Nothing yet.</p> : (
               <table><tbody>
@@ -248,10 +270,9 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                 ))}
               </tbody></table>
             )}
-          </section>}
+          </Section>}
 
-          {show('shopping') && <section className="card">
-            <h3>Shopping list</h3>
+          {show('shopping') && <Section title="Shopping list">
             <p className="muted">As-purchased weight for every meal sold (Quantity), after yield loss and buffer.</p>
             {r.shoppingList.length === 0 ? <p className="muted">Nothing yet.</p> : (
               <table>
@@ -281,10 +302,9 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                 </tbody></table>
               </details>
             )}
-          </section>}
+          </Section>}
 
-          {show('prep') && <section className="card">
-            <h3>Prep sheet</h3>
+          {show('prep') && <Section title="Prep sheet">
             <p className="muted">Finished weight still to prep (Remaining), one total per component.</p>
             {r.prepSheet.length === 0 ? <p className="muted">Nothing yet.</p> : r.prepSheet.map(g => (
               <div key={g.method} className="group">
@@ -313,11 +333,10 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                 </table>
               </div>
             ))}
-          </section>}
+          </Section>}
 
           {show('bakery') && r.prepOnly.length > 0 && (
-            <section className="card">
-              <h3>Bakery (prep only)</h3>
+            <Section title="Bakery (prep only)">
               <p className="muted">Still to make (Remaining). Not on the shopping list.</p>
               <table><tbody>
                 {r.prepOnly.map(b => {
@@ -331,11 +350,10 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                   );
                 })}
               </tbody></table>
-            </section>
+            </Section>
           )}
 
-          {show('destinations') && <section className="card">
-            <h3>Labels by destination</h3>
+          {show('destinations') && <Section title="Labels by destination">
             <div className="no-print">
               <p className="muted">Drop the Hotplate ticket PDF to split labels into Bounce &amp; Play, Elevate and Deliveries.</p>
               <label className="btn">
@@ -345,25 +363,23 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
               {ticketError && <p className="error">{ticketError}</p>}
             </div>
             {tickets && <DestinationTable fileName={tickets.fileName} labels={tickets.labels} prepList={r.labels} />}
-          </section>}
+          </Section>}
 
           <div className="two-col">
-            {show('labels') && <section className="card">
-              <h3>Labels <span className="muted">({totalLabels})</span></h3>
+            {show('labels') && <Section title={<>Labels <span className="muted">({totalLabels})</span></>}>
               {r.labels.length === 0 ? <p className="muted">Nothing yet.</p> : (
                 <table><tbody>
                   {r.labels.map(l => <tr key={l.title}><td>{l.title}</td><td className="num">{l.count}</td></tr>)}
                 </tbody></table>
               )}
-            </section>}
-            {show('containers') && <section className="card">
-              <h3>Containers</h3>
+            </Section>}
+            {show('containers') && <Section title="Containers">
               {r.containers.length === 0 ? <p className="muted">Nothing yet.</p> : (
                 <table><tbody>
                   {r.containers.map(c => <tr key={c.container}><td>{c.container}</td><td className="num">{c.count}</td></tr>)}
                 </tbody></table>
               )}
-            </section>}
+            </Section>}
           </div>
         </>
       )}
