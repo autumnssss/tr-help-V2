@@ -27,29 +27,26 @@ describe('recipes inside recipes', () => {
   // 25 × 4 oz salad = 100 oz → 80 oz boiled (5 lb); 14 × 9 oz mash = 126 oz → 112 oz boiled (7 lb)
   const p = plan([order('Ribs', 25), order('Meatloaf', 14)], catalog);
 
-  it('totals the shared base recipe with a breakdown of where it goes', () => {
+  it('a base plated on its own keeps its line (with every use), and each dish gets its own line', () => {
     const boil = p.prepSheet.find(g => g.method === 'boil')!;
-    expect(boil.items).toEqual([{
-      recipeId: 'boiled', name: 'Boiled Potatoes', finishedLb: 12,
-      for: ['Mashed Potatoes', 'Potato Salad'],
-      // Potato Salad (same station) shows under the pot it's made from, with its own total, not as a second line.
-      nested: [{ recipeId: 'salad', name: 'Potato Salad', lb: 6.25, for: ['Ribs'] }], // 25 × 4 oz
-    }]);
-    // A dish at a different station still gets its own line there.
+    expect(boil.items).toEqual([
+      { recipeId: 'boiled', name: 'Boiled Potatoes', finishedLb: 12, for: ['Mashed Potatoes', 'Potato Salad'] },
+      { recipeId: 'salad', name: 'Potato Salad', finishedLb: 6.25, for: ['Ribs'] }, // 25 × 4 oz
+    ]);
     expect(p.prepSheet.find(g => g.method === 'bake')!.items.map(i => i.name)).toEqual(['Mashed Potatoes']);
     expect(p.unresolved).toEqual([]);
   });
 
-  it('a mixed-in base drops off the sheet and its same-station dishes get their own lines', () => {
-    const mixed: Catalog = { ...catalog, recipes: catalog.recipes.map(r => (r.id === 'boiled' ? { ...r, onPrepSheet: false } : r)) };
-    const q = plan([order('Ribs', 25), order('Meatloaf', 14)], mixed);
+  it('standard: a base only used inside other recipes has no line; each dish has its own and carries the base in its card', () => {
+    const baseOnly: Catalog = { ...catalog, menu: catalog.menu.filter(m => m.id !== 'Boiled potato side') };
+    const q = plan([order('Ribs', 25), order('Meatloaf', 14)], baseOnly);
     expect(q.prepSheet.find(g => g.method === 'boil')!.items).toEqual([
       { recipeId: 'salad', name: 'Potato Salad', finishedLb: 6.25, for: ['Ribs'] },
     ]);
     expect(q.prepSheet.find(g => g.method === 'bake')!.items.map(i => i.name)).toEqual(['Mashed Potatoes']);
-    // Same potatoes bought either way; the salad's card carries the boiled-potato steps.
-    expect(q.shoppingList).toEqual(p.shoppingList);
-    expect(q.recipeCards.salad!.lines[0]).toMatchObject({ recipeId: 'boiled' });
+    expect(q.shoppingList).toEqual(p.shoppingList); // same potatoes bought either way
+    // 25 × 4 oz salad = 100 oz = 2.5 batches → 80 oz of boiled potatoes, shown inside the salad card
+    expect(q.recipeCards.salad!.lines[0]).toMatchObject({ recipeId: 'boiled', mixedIn: true, sub: { finishedOz: 80 } });
   });
 
   it('buys raw ingredients through the sub-recipe', () => {

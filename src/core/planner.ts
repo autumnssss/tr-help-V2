@@ -165,11 +165,6 @@ export type PrepLine = {
   finishedLb: number;
   /** What it's for: the dishes it's plated in (short menu names) and the recipes it goes into. */
   for: string[];
-  /**
-   * Dishes at the same station made from this one (Mashed Potatoes from Boiled Potatoes): they have no
-   * line of their own, so they show under it. lb = the dish's own total.
-   */
-  nested?: { recipeId: string; name: string; lb: number; for: string[] }[];
   /** Pieces to plate, for portions counted in pieces (part of finishedLb). */
   pieces?: number;
   /** Shared pot or water within the station (Recipe.prepGroup). */
@@ -230,8 +225,19 @@ export function finishedBatchOz(recipe: Recipe, ingredients: Map<string, Ingredi
   );
 }
 
-/** A recipe × batches, every line in its own units. Mixed-in sub-recipes get a card for this line's share. */
-function buildCard(recipe: Recipe, batches: number, recipes: Map<string, Recipe>, ingredients: Map<string, Ingredient>, depth = 0): RecipeCard {
+/**
+ * Which recipes get a prep line of their own (kitchen 2026-10-23, the standard): every dish that's plated or
+ * picked as a side. A base only used inside other recipes (Boiled Russet Potatoes, Cooked Rice, broths) has no
+ * line; it's made as part of each dish, so its steps show inside that dish's card. Mixed in = the same, set by hand.
+ */
+export function ownPrepLine(catalog: Catalog): (recipe: Recipe) => boolean {
+  const plated = new Set<string>(Object.values(catalog.sides));
+  for (const m of catalog.menu) if (m.kind === 'meal') for (const s of Object.values(m.sizes)) for (const p of s.portions) plated.add(p.recipeId);
+  return recipe => recipe.onPrepSheet !== false && plated.has(recipe.id);
+}
+
+/** A recipe × batches, every line in its own units. Sub-recipes with no line of their own get a card for this line's share. */
+function buildCard(recipe: Recipe, batches: number, recipes: Map<string, Recipe>, ingredients: Map<string, Ingredient>, ownLine: (r: Recipe) => boolean, depth = 0): RecipeCard {
   const batch = finishedBatchOz(recipe, ingredients);
   return {
     recipeId: recipe.id,
@@ -242,10 +248,10 @@ function buildCard(recipe: Recipe, batches: number, recipes: Map<string, Recipe>
     ...(recipe.notes ? { notes: recipe.notes } : {}),
     lines: recipe.lines.map(l => {
       const sub = l.recipeId ? recipes.get(l.recipeId) : undefined;
-      const mixedIn = sub?.onPrepSheet === false;
+      const mixedIn = !!sub && !ownLine(sub);
       const subBatch = sub ? finishedBatchOz(sub, ingredients) : 0;
       const subCard = mixedIn && l.oz != null && subBatch > 0 && depth < 5
-        ? buildCard(sub!, (l.oz * batches) / subBatch, recipes, ingredients, depth + 1) : undefined;
+        ? buildCard(sub!, (l.oz * batches) / subBatch, recipes, ingredients, ownLine, depth + 1) : undefined;
       return {
         name: sub?.name ?? l.name ?? ingredients.get(l.ingredientId ?? '')?.name ?? '?',
         amount: l.amount != null ? l.amount * batches : null,
@@ -264,7 +270,7 @@ export function recipeCard(catalog: Catalog, recipeId: string, batches: number):
   const recipes = new Map(catalog.recipes.map(r => [r.id, r]));
   const ingredients = new Map(catalog.ingredients.map(i => [i.id, i]));
   const recipe = recipes.get(recipeId);
-  return recipe ? buildCard(recipe, batches, recipes, ingredients) : undefined;
+  return recipe ? buildCard(recipe, batches, recipes, ingredients, ownPrepLine(catalog)) : undefined;
 }
 
 /**
@@ -508,15 +514,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     })
     .sort(byName);
 
-  // A dish made from a base recipe at the same station (Mashed Potatoes from Boiled Potatoes, both
-  // boil) shows only nested under the base, so the station sees one pot, not two lines. A base that's
-  // mixed in (not on the prep sheet) has no line to nest under, so its dishes keep their own lines.
-  const nested = new Set<string>();
-  for (const [subId, parents] of prep.usedIn) {
-    if (recipes.get(subId)?.onPrepSheet === false) continue;
-    const station = recipes.get(subId)?.method;
-    for (const parentId of parents.keys()) if (recipes.get(parentId)?.method === station) nested.add(parentId);
-  }
+  const ownLine = ownPrepLine(catalog);
 
   // What each line is for: dishes it's plated in, then recipes it goes into.
   const forOf = (recipeId: string) => [...new Set([
@@ -527,7 +525,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
   const methods = new Map<CookingMethod, PrepLine[]>();
   for (const [recipeId, oz] of prep.total) {
     const recipe = recipes.get(recipeId);
-    if (!recipe || oz <= 0 || nested.has(recipeId) || recipe.onPrepSheet === false) continue;
+    if (!recipe || oz <= 0 || !ownLine(recipe)) continue;
     // No station means no station's list: flag it at the top instead of a catch-all at the bottom.
     if (recipe.method === 'unassigned') { flag({ kind: 'station', recipeId, lb: round2(oz / 16) }); continue; }
     const list = methods.get(recipe.method) ?? [];
@@ -535,12 +533,6 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     const pieces = prepPieces.get(recipeId);
     if (pieces) line.pieces = pieces;
     if (recipe.prepGroup) line.group = recipe.prepGroup;
-    const sameStation = [...(prep.usedIn.get(recipeId)?.keys() ?? [])].filter(id => nested.has(id) && recipes.get(id)?.method === recipe.method);
-    if (sameStation.length) {
-      line.nested = sameStation
-        .map(id => ({ recipeId: id, name: recipes.get(id)?.name ?? id, lb: round2((prep.total.get(id) ?? 0) / 16), for: forOf(id) }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-    }
     list.push(line);
     methods.set(recipe.method, list);
   }
@@ -548,7 +540,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
   for (const [recipeId, oz] of prep.total) {
     const recipe = recipes.get(recipeId);
     const batch = recipe ? finishedBatchOz(recipe, ingredients) : 0;
-    if (recipe && oz > 0 && batch > 0 && recipe.lines.length) recipeCards[recipeId] = buildCard(recipe, oz / batch, recipes, ingredients);
+    if (recipe && oz > 0 && batch > 0 && recipe.lines.length) recipeCards[recipeId] = buildCard(recipe, oz / batch, recipes, ingredients, ownLine);
   }
 
   const prepSheet = [...methods]

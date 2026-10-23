@@ -306,21 +306,6 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                           <td className="num">{i.finishedLb.toFixed(2)} lb</td>
                         </tr>,
                         ...cardRow(i.recipeId, i.recipeId),
-                        // Dishes at this station made from it (Mashed Potatoes from Boiled Russet Potatoes).
-                        ...(i.nested ?? []).flatMap(d => {
-                          const id = `${i.recipeId}>${d.recipeId}`;
-                          return [
-                            <tr key={id} className={`used-in${done.has(id) ? ' done' : ''}`}>
-                              <td className="check" />
-                              <td>
-                                <span className="nest">{check(id, d.name, true)}<strong>{d.name}</strong></span> {cardToggle(d.recipeId)}
-                                {d.for.length > 0 && <div className="raw">for {d.for.join(', ')}</div>}
-                              </td>
-                              <td className="num">{d.lb.toFixed(2)} lb</td>
-                            </tr>,
-                            ...cardRow(id, d.recipeId),
-                          ];
-                        }),
                       ];
                       return [...header, ...rows];
                     })}

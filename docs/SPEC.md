@@ -90,6 +90,11 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 
 - **Every item on the menu has a station.** An item without one goes in **Needs setup** (top of the page), never
   in a catch-all at the bottom: an item missing from its station means a second pot or oven run for one plate.
+- **Every dish has its own line** (standard, kitchen 2026-10-23): Mashed Potatoes, Potato Salad, German Potato Salad,
+  Cilantro Lime Rice and Fried Rice each get a line. A base only used inside other recipes (boiled potatoes, cooked
+  rice, broths) gets no line of its own; its steps show inside each dish's recipe card, scaled to that dish. A base
+  that's also plated on its own keeps its line.
+- **Each device picks which report sections it shows** (Show on this page); Needs setup always shows.
 - **No "small items" list.** Every line stays in its station, however small (2.5 oz of cauliflower is one client's plate).
 - **Boil:** everything boiled is under **Salted water**; rice is its own pot. The app does not order the boil.
   Chef B does, because of debris and color carry-over (potatoes only with potatoes, green beans before broccoli,
