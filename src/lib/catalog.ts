@@ -9,7 +9,7 @@ export type CatalogRows = {
   kitchen_recipes: { id: string; name: string; method: CookingMethod | null; finished_oz: number | null; oz_per_piece?: number | null; prep_group?: string | null; on_prep_sheet?: boolean; steps?: string | null; notes?: string | null; finished_oz_measured?: boolean; yield_count?: number | null; yield_unit?: string | null; archived?: boolean }[];
   recipe_lines: { recipe_id: string; ingredient_id: string | null; sub_recipe_id: string | null; raw_name: string; oz: number | null; position: number; amount?: number | null; unit?: string | null; note?: string | null }[];
   container_types: { id: string; name: string; cost_only: boolean }[];
-  menu_items: { id: string; name: string; kind: 'meal' | 'sidePlate' | 'prepOnly'; side_oz: number | null }[];
+  menu_items: { id: string; name: string; kind: 'meal' | 'sidePlate' | 'prepOnly'; side_oz: number | null; own_label?: boolean }[];
   menu_titles: { menu_item_id: string; title: string }[];
   menu_sizes: { id: string; menu_item_id: string; variation: string; labels: number }[];
   size_portions: { size_id: string; recipe_id: string; oz: number | null; pieces?: number | null }[];
@@ -59,7 +59,7 @@ export function rowsToCatalog(rows: CatalogRows): Catalog {
         labels: s.labels,
       };
     }
-    return { id: m.id, titles, kind: 'meal', sizes: bySize };
+    return { id: m.id, titles, kind: 'meal', ...(m.own_label ? { ownLabel: true } : {}), sizes: bySize };
   });
 
   return {

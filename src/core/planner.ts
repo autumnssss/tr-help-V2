@@ -102,6 +102,8 @@ export type MenuItem = {
 } & (
   | {
       kind: 'meal';
+      /** Already has its own nutrition label; the Nutrition tab doesn't build a panel for it. */
+      ownLabel?: boolean;
       /** Keyed by Hotplate variation text, normalized. 'regular' = blank variation, 'family' = any Family… variation without its own entry. */
       sizes: Record<string, Size>;
     }

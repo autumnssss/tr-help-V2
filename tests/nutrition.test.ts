@@ -41,7 +41,12 @@ describe('nutrition', () => {
 
   it('never guesses: an ingredient with no data is listed and the meal has no panel', () => {
     const salty = mealPanels(catalog).find(p => p.title === 'Salty Plate');
-    expect(salty).toEqual({ title: 'Salty Plate', missing: ['salt'] });
+    expect(salty).toEqual({ id: 'salty', title: 'Salty Plate', missing: ['salt'] });
+  });
+
+  it('leaves out meals that already have their own label', () => {
+    const own = { ...catalog, menu: catalog.menu.map(m => (m.id === 'salty' ? { ...m, ownLabel: true } : m)) } as Catalog;
+    expect(mealPanels(own).map(p => p.title)).toEqual(['Meat & Rice']);
   });
 
   it('pads, then rounds the way US labels do', () => {

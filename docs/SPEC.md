@@ -81,6 +81,10 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 - **Padding: +10% calories, carbs and fat; protein 0%.** FDA compliance (21 CFR 101.9(g)) lets actual calories
   and fat run up to 20% over the label but requires actual protein to be at least 80% of the label, so
   overstating calories/carbs/fat is safe and overstating protein is not. Rounded per US label rules.
+- **Meals with their own label** (`menu_items.own_label`) get no panel; they're listed by name and can be switched back.
+- **Ingredient numbers come from USDA FoodData Central** (source and FDC id kept with each ingredient), or from a
+  package label when USDA has no match (Head Country, Better Than Bouillon). Anyone can look up and correct an
+  ingredient's numbers on the Nutrition tab; a package label is entered per serving and converted to per 100 g in code.
 
 ### Stations (kitchen 2026-10-22)
 

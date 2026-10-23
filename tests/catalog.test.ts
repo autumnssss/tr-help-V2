@@ -73,6 +73,12 @@ describe('database rows → plan', () => {
     expect(p.prepSheet.map(g => g.method)).toEqual(['smoke', 'roast']);
   });
 
+  it('carries the own-label flag for meals that already have a nutrition label', () => {
+    const own = { ...rows, menu_items: rows.menu_items.map(m => m.id === 'm-pork' ? { ...m, own_label: true } : m) };
+    expect(rowsToCatalog(own).menu.find(m => m.id === 'm-pork')).toMatchObject({ kind: 'meal', ownLabel: true });
+    expect(rowsToCatalog(rows).menu.find(m => m.id === 'm-pork')).not.toHaveProperty('ownLabel');
+  });
+
   it('flags a needed recipe with no station instead of listing it under no station', () => {
     const noStation = { ...rows, kitchen_recipes: rows.kitchen_recipes.map(r => r.id === 'r-carrot' ? { ...r, method: null } : r) };
     const q = plan([order('Garden Vegetable and Sides', 2, '2x Honey Glazed Carrots')], rowsToCatalog(noStation));

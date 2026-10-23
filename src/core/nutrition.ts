@@ -49,15 +49,16 @@ export function recipeMacrosPerOz(catalog: Catalog, recipeId: string, seen: stri
 }
 
 export type MealPanel =
-  | { title: string; servingOz: number; macros: Macros; parts: { name: string; oz: number }[] }
-  | { title: string; missing: string[] };
+  | { id: string; title: string; servingOz: number; macros: Macros; parts: { name: string; oz: number }[] }
+  | { id: string; title: string; missing: string[] };
 
-/** One panel per meal: its regular plate. Side plates and bakery items vary by pick, so they're left out. */
+/** One panel per meal: its regular plate. Side plates and bakery items vary by pick, so they're left out,
+ *  and so are meals that already have their own label. */
 export function mealPanels(catalog: Catalog): MealPanel[] {
   const recipes = new Map(catalog.recipes.map(r => [r.id, r]));
   const panels: MealPanel[] = [];
   for (const m of catalog.menu) {
-    if (m.kind !== 'meal' || !m.sizes.regular) continue;
+    if (m.kind !== 'meal' || m.ownLabel || !m.sizes.regular) continue;
     const title = m.titles[0] ?? m.id;
     let macros = ZERO;
     let servingOz = 0;
@@ -73,7 +74,7 @@ export function mealPanels(catalog: Catalog): MealPanel[] {
       servingOz += oz;
       parts.push({ name: recipe?.name ?? p.recipeId, oz });
     }
-    panels.push(missing.length ? { title, missing: [...new Set(missing)] } : { title, servingOz, macros, parts });
+    panels.push(missing.length ? { id: m.id, title, missing: [...new Set(missing)] } : { id: m.id, title, servingOz, macros, parts });
   }
   return panels.sort((a, b) => a.title.localeCompare(b.title));
 }
