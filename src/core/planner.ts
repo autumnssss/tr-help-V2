@@ -509,9 +509,11 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
     .sort(byName);
 
   // A dish made from a base recipe at the same station (Mashed Potatoes from Boiled Potatoes, both
-  // boil) shows only nested under the base, so the station sees one pot, not two lines.
+  // boil) shows only nested under the base, so the station sees one pot, not two lines. A base that's
+  // mixed in (not on the prep sheet) has no line to nest under, so its dishes keep their own lines.
   const nested = new Set<string>();
   for (const [subId, parents] of prep.usedIn) {
+    if (recipes.get(subId)?.onPrepSheet === false) continue;
     const station = recipes.get(subId)?.method;
     for (const parentId of parents.keys()) if (recipes.get(parentId)?.method === station) nested.add(parentId);
   }

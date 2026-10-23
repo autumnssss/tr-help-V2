@@ -36,6 +36,17 @@ function describe(u: Unresolved, recipeName: (id: string) => string): string {
   }
 }
 
+/** Report sections each device can show or hide (Needs setup always shows). Saved on this device only. */
+const SECTIONS = [
+  ['totals', 'Totals by item'], ['shopping', 'Shopping list'], ['prep', 'Prep sheet'], ['bakery', 'Bakery'],
+  ['destinations', 'Labels by destination'], ['labels', 'Labels'], ['containers', 'Containers'],
+] as const;
+type SectionId = typeof SECTIONS[number][0];
+const HIDDEN_KEY = 'report-hidden-sections';
+const loadHidden = (): Set<SectionId> => {
+  try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]') as SectionId[]); } catch { return new Set(); }
+};
+
 const fmtOz = (oz: number) => `${Number.isInteger(oz) ? oz : oz.toFixed(1)} oz`;
 
 /** Counted items read as a count ("7 eggs", "3 packs"); everything else as weight. */
@@ -49,6 +60,14 @@ const dates = (orders: OrderLine[]) =>
 
 export function Upload({ catalog, history }: { catalog: Catalog; history?: UploadHistory }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [hidden, setHidden] = useState<Set<SectionId>>(loadHidden);
+  const show = (id: SectionId) => !hidden.has(id);
+  function toggleSection(id: SectionId) {
+    const next = new Set(hidden);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setHidden(next);
+    try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...next])); } catch { /* private mode */ }
+  }
   const [subtract, setSubtract] = useState(true);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const itemKey = (item: string) => normalizeName(item);
@@ -185,6 +204,17 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
           )}
 
           <details className="card no-print items">
+            <summary>Show on this page ({SECTIONS.length - SECTIONS.filter(([id]) => hidden.has(id)).length} of {SECTIONS.length} sections)</summary>
+            <p className="raw">Saved on this device, so each person can keep their own view. Hidden sections don't print.</p>
+            {SECTIONS.map(([id, name]) => (
+              <label key={id} className="toggle">
+                <input type="checkbox" checked={show(id)} onChange={() => toggleSection(id)} />
+                <span>{name}</span>
+              </label>
+            ))}
+          </details>
+
+          <details className="card no-print items">
             <summary>Items in this file ({fileItems.length - [...excluded].filter(k => fileItems.some(([fk]) => fk === k)).length} of {fileItems.length} counted)</summary>
             {fileItems.map(([k, name]) => (
               <label key={k} className="toggle">
@@ -202,7 +232,7 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
             </section>
           )}
 
-          <section className="card">
+          {show('totals') && <section className="card">
             <h3>Totals by item</h3>
             <p className="muted">Every portion sold (Quantity) × how many = total cooked weight.</p>
             {r.components.filter(c => c.portions.length).length === 0 ? <p className="muted">Nothing yet.</p> : (
@@ -218,9 +248,9 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                 ))}
               </tbody></table>
             )}
-          </section>
+          </section>}
 
-          <section className="card">
+          {show('shopping') && <section className="card">
             <h3>Shopping list</h3>
             <p className="muted">As-purchased weight for every meal sold (Quantity), after yield loss and buffer.</p>
             {r.shoppingList.length === 0 ? <p className="muted">Nothing yet.</p> : (
@@ -251,9 +281,9 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                 </tbody></table>
               </details>
             )}
-          </section>
+          </section>}
 
-          <section className="card">
+          {show('prep') && <section className="card">
             <h3>Prep sheet</h3>
             <p className="muted">Finished weight still to prep (Remaining), one total per component.</p>
             {r.prepSheet.length === 0 ? <p className="muted">Nothing yet.</p> : r.prepSheet.map(g => (
@@ -298,9 +328,9 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                 </table>
               </div>
             ))}
-          </section>
+          </section>}
 
-          {r.prepOnly.length > 0 && (
+          {show('bakery') && r.prepOnly.length > 0 && (
             <section className="card">
               <h3>Bakery (prep only)</h3>
               <p className="muted">Still to make (Remaining). Not on the shopping list.</p>
@@ -319,7 +349,7 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
             </section>
           )}
 
-          <section className="card">
+          {show('destinations') && <section className="card">
             <h3>Labels by destination</h3>
             <div className="no-print">
               <p className="muted">Drop the Hotplate ticket PDF to split labels into Bounce &amp; Play, Elevate and Deliveries.</p>
@@ -330,25 +360,25 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
               {ticketError && <p className="error">{ticketError}</p>}
             </div>
             {tickets && <DestinationTable fileName={tickets.fileName} labels={tickets.labels} prepList={r.labels} />}
-          </section>
+          </section>}
 
           <div className="two-col">
-            <section className="card">
+            {show('labels') && <section className="card">
               <h3>Labels <span className="muted">({totalLabels})</span></h3>
               {r.labels.length === 0 ? <p className="muted">Nothing yet.</p> : (
                 <table><tbody>
                   {r.labels.map(l => <tr key={l.title}><td>{l.title}</td><td className="num">{l.count}</td></tr>)}
                 </tbody></table>
               )}
-            </section>
-            <section className="card">
+            </section>}
+            {show('containers') && <section className="card">
               <h3>Containers</h3>
               {r.containers.length === 0 ? <p className="muted">Nothing yet.</p> : (
                 <table><tbody>
                   {r.containers.map(c => <tr key={c.container}><td>{c.container}</td><td className="num">{c.count}</td></tr>)}
                 </tbody></table>
               )}
-            </section>
+            </section>}
           </div>
         </>
       )}

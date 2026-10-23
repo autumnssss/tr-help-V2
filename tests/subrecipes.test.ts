@@ -40,6 +40,18 @@ describe('recipes inside recipes', () => {
     expect(p.unresolved).toEqual([]);
   });
 
+  it('a mixed-in base drops off the sheet and its same-station dishes get their own lines', () => {
+    const mixed: Catalog = { ...catalog, recipes: catalog.recipes.map(r => (r.id === 'boiled' ? { ...r, onPrepSheet: false } : r)) };
+    const q = plan([order('Ribs', 25), order('Meatloaf', 14)], mixed);
+    expect(q.prepSheet.find(g => g.method === 'boil')!.items).toEqual([
+      { recipeId: 'salad', name: 'Potato Salad', finishedLb: 6.25, for: ['Ribs'] },
+    ]);
+    expect(q.prepSheet.find(g => g.method === 'bake')!.items.map(i => i.name)).toEqual(['Mashed Potatoes']);
+    // Same potatoes bought either way; the salad's card carries the boiled-potato steps.
+    expect(q.shoppingList).toEqual(p.shoppingList);
+    expect(q.recipeCards.salad!.lines[0]).toMatchObject({ recipeId: 'boiled' });
+  });
+
   it('buys raw ingredients through the sub-recipe', () => {
     const lb = (id: string) => p.shoppingList.find(l => l.ingredientId === id)?.lb;
     expect(lb('potatoes')).toBe(15); // 12 lb boiled ÷ 0.8
