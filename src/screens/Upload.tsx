@@ -173,6 +173,11 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
 
   const recipeName = (id: string) => catalog.recipes.find(r => r.id === id)?.name ?? id;
   const r = result;
+  // Every portion sold, e.g. "4 oz × 21 + Family 16 oz × 6" (from Totals by item).
+  const portionsOf = (recipeId: string) => {
+    const c = r?.components.find(x => x.recipeId === recipeId);
+    return c && c.portions.length ? c.portions.map(p => `${p.label} × ${p.count}`).join(' + ') : '';
+  };
   const totalLabels = r?.labels.reduce((s, l) => s + l.count, 0) ?? 0;
   const totalPlates = orders.reduce((s, o) => s + o.quantity, 0);
   const fileItems = loaded
@@ -188,14 +193,14 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
   return (
     <main>
       <section
-        className={`drop no-print${dragging ? ' dragging' : ''}`}
+        className={`drop no-print${loaded ? ' compact' : ''}${dragging ? ' dragging' : ''}`}
         onDragOver={e => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
       >
-        <p><strong>Drop the Hotplate prep-list CSV here</strong></p>
-        <label className="btn">
-          Choose file
+        {!loaded && <p><strong>Drop the Hotplate prep-list CSV here</strong></p>}
+        <label className={loaded ? 'btn link small' : 'btn'}>
+          {loaded ? 'Load another file' : 'Choose file'}
           <input type="file" accept=".csv,text/csv" hidden onChange={e => { void read(e.target.files?.[0]); e.target.value = ''; }} />
         </label>
         {error && <p className="error">{error}</p>}
@@ -321,6 +326,7 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                           <td>
                             <strong>{i.name}</strong> {cardToggle(i.recipeId)}
                             {i.for.length > 0 && <div className="raw">for {i.for.join(', ')}</div>}
+                            {portionsOf(i.recipeId) && <div className="raw">{portionsOf(i.recipeId)}</div>}
                             {i.pieces && <div className="raw">plate {i.pieces} pieces</div>}
                           </td>
                           <td className="num">{i.finishedLb.toFixed(2)} lb</td>

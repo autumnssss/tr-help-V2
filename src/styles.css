@@ -17,6 +17,7 @@ h4 { margin: 12px 0 4px; color: var(--accent); }
 .btn:disabled { opacity: 0.6; }
 .btn.link { background: none; color: var(--accent); padding: 6px; }
 .drop { border: 2px dashed var(--line); border-radius: 10px; background: var(--card); padding: 32px 16px; text-align: center; }
+.drop.compact { padding: 6px 12px; text-align: right; border-style: solid; }
 .drop.dragging { border-color: var(--accent); background: var(--accent-bg); }
 .summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 20px 0 12px; }
 .summary > div, .summary h2 { flex: 1 1 100%; }
