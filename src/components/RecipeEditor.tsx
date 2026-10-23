@@ -182,11 +182,11 @@ function NewIngredient({ name, onAdd }: { name: string; onAdd: (category: string
     <div className="ask">
       “{name.trim()}” isn't in the ingredient list.{' '}
       <select value={category} onChange={e => setCategory(e.target.value)}>
-        <option value="">aisle…</option>
+        <option value="">department…</option>
         {STORE_ORDER.map(c => <option key={c}>{c}</option>)}
       </select>{' '}
       <label><input type="checkbox" checked={staple} onChange={e => setStaple(e.target.checked)} /> staple</label>{' '}
-      <button className="btn small" disabled={!category} title={category ? '' : 'Pick its aisle first'} onClick={() => onAdd(category, staple)}>Add ingredient</button>
+      <button className="btn small" disabled={!category} title={category ? '' : 'Pick its department first'} onClick={() => onAdd(category, staple)}>Add ingredient</button>
     </div>
   );
 }
