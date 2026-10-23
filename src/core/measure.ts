@@ -62,3 +62,14 @@ export function missingWeight(unit: string): 'cup' | 'each' | null {
 
 export const ozToGrams = (oz: number) => oz * GRAMS_PER_OZ;
 export const gramsToOz = (g: number) => g / GRAMS_PER_OZ;
+
+/**
+ * Weight as the kitchen reads it (2026-10-23): under a pound in ounces ("10.9 oz"), a pound or more in pounds
+ * and whole ounces ("1 lb 4 oz", not "1.25 lb"). roundUp for buying (never short); otherwise nearest ounce.
+ */
+export function lbOz(oz: number, roundUp = false): string {
+  if (oz < 16) return `${oz < 1 ? oz.toFixed(2) : oz.toFixed(1)} oz`;
+  const whole = roundUp ? Math.ceil(oz - 1e-9) : Math.round(oz);
+  const lb = Math.floor(whole / 16), rest = whole % 16;
+  return rest ? `${lb} lb ${rest} oz` : `${lb} lb`;
+}

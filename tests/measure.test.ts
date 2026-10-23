@@ -1,4 +1,4 @@
-import { lineOz, missingWeight, unitKind } from '../src/core/measure';
+import { lineOz, missingWeight, unitKind, lbOz } from '../src/core/measure';
 
 describe('recipe line weights', () => {
   it('converts weights exactly', () => {
@@ -30,5 +30,20 @@ describe('recipe line weights', () => {
     expect(missingWeight('cloves')).toBe('each');
     expect(missingWeight('lb')).toBeNull();
     expect(unitKind('fl oz')).toBe('volume');
+  });
+});
+
+describe('weights as the kitchen reads them', () => {
+  it('a pound or more in pounds and whole ounces; under a pound in ounces', () => {
+    expect(lbOz(20)).toBe('1 lb 4 oz');
+    expect(lbOz(32)).toBe('2 lb');
+    expect(lbOz(30.08)).toBe('1 lb 14 oz');
+    expect(lbOz(10.9)).toBe('10.9 oz');
+    expect(lbOz(0.35)).toBe('0.35 oz');
+  });
+  it('rounds up when buying, never short', () => {
+    expect(lbOz(30.08, true)).toBe('1 lb 15 oz');
+    expect(lbOz(31.6, true)).toBe('2 lb');
+    expect(lbOz(32, true)).toBe('2 lb');
   });
 });

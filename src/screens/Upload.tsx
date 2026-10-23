@@ -5,6 +5,7 @@ import { parseTickets } from '../core/tickets';
 import { pdfTextItems } from '../lib/pdf';
 import { plan, type Catalog, type Plan, type RecipeCard, type ShoppingLine, type Unresolved } from '../core/planner';
 import { Card } from '../components/RecipeCard';
+import { lbOz } from '../core/measure';
 import { containsOrders, sameOrders, subtractOrders } from '../core/weeks';
 import { normalizeName } from '../core/hotplate';
 
@@ -38,7 +39,7 @@ function describe(u: Unresolved, recipeName: (id: string) => string): string {
 
 /** Report sections each device can show or hide (Needs setup always shows). Saved on this device only. */
 const SECTIONS = [
-  ['totals', 'Totals by item'], ['shopping', 'Shopping list'], ['prep', 'Prep sheet'], ['bakery', 'Bakery'],
+  ['shopping', 'Shopping list'], ['prep', 'Prep sheet'], ['bakery', 'Bakery'],
   ['destinations', 'Labels by destination'], ['labels', 'Labels'], ['containers', 'Containers'],
 ] as const;
 type SectionId = typeof SECTIONS[number][0];
@@ -60,14 +61,12 @@ function Section({ title, children }: { title: ReactNode; children: ReactNode })
 const fmtOz = (oz: number) => `${Number.isInteger(oz) ? oz : oz.toFixed(1)} oz`;
 
 /** Counted items read as a count ("7 eggs", "3 packs"); everything else as weight. */
-const amount = (l: ShoppingLine) => (l.packages ? `${l.packages.count} ${one(l.packages.count, l.packages.unit)}` : weight(l.oz));
+const amount = (l: ShoppingLine) => (l.packages ? `${l.packages.count} ${one(l.packages.count, l.packages.unit)}` : lbOz(l.oz, true));
 
-/** "1 bunch", "1 block", "2 bunches": units are stored plural. */
+/** "1 bunch", "1 bag (10 oz)", "2 bunches": units are stored plural. */
 const one = (count: number, unit: string) =>
-  count !== 1 ? unit : unit.replace(/(ch|sh|ss|x)es$/, '$1').replace(/([^s])s$/, '$1');
+  count !== 1 ? unit : unit.replace(/^\S+/, w => w.replace(/(ch|sh|ss|x)es$/, '$1').replace(/([^s])s$/, '$1'));
 
-/** Under a pound reads better in ounces (garlic 0.2 oz, not 0.01 lb). */
-const weight = (oz: number) => (oz < 16 ? `${oz < 1 ? oz.toFixed(2) : oz.toFixed(1)} oz` : `${(oz / 16).toFixed(2)} lb`);
 
 const dates = (orders: OrderLine[]) =>
   [...new Set(orders.map(o => o.windowStart.slice(0, 10)).filter(Boolean))].sort();
@@ -173,7 +172,7 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
 
   const recipeName = (id: string) => catalog.recipes.find(r => r.id === id)?.name ?? id;
   const r = result;
-  // Every portion sold, e.g. "4 oz × 21 + Family 16 oz × 6" (from Totals by item).
+  // Every portion sold, e.g. "4 oz × 21 + Family 16 oz × 6"; the weight on the line is what's still to prep.
   const portionsOf = (recipeId: string) => {
     const c = r?.components.find(x => x.recipeId === recipeId);
     return c && c.portions.length ? c.portions.map(p => `${p.label} × ${p.count}`).join(' + ') : '';
@@ -260,23 +259,6 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
             </section>
           )}
 
-          {show('totals') && <Section title="Totals by item">
-            <p className="muted">Every portion sold (Quantity) × how many = total cooked weight.</p>
-            {r.components.filter(c => c.portions.length).length === 0 ? <p className="muted">Nothing yet.</p> : (
-              <table><tbody>
-                {r.components.filter(c => c.portions.length).map(c => (
-                  <tr key={c.recipeId}>
-                    <td>
-                      <strong>{c.name}</strong>
-                      <div className="raw">{c.portions.map(p => `${p.label} × ${p.count}`).join(' + ')}</div>
-                    </td>
-                    <td className="num">{weight(c.finishedOz)}</td>
-                  </tr>
-                ))}
-              </tbody></table>
-            )}
-          </Section>}
-
           {show('shopping') && <Section title="Shopping list">
             <p className="muted">As-purchased weight for every meal sold (Quantity), after yield loss and buffer.</p>
             {r.shoppingList.length === 0 ? <p className="muted">Nothing yet.</p> : (
@@ -329,7 +311,7 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
                             {portionsOf(i.recipeId) && <div className="raw">{portionsOf(i.recipeId)}</div>}
                             {i.pieces && <div className="raw">plate {i.pieces} pieces</div>}
                           </td>
-                          <td className="num">{i.finishedLb.toFixed(2)} lb</td>
+                          <td className="num">{lbOz(i.finishedLb * 16)}</td>
                         </tr>,
                         ...cardRow(i.recipeId, i.recipeId),
                       ];
