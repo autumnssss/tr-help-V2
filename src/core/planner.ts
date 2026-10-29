@@ -26,6 +26,8 @@ export type Ingredient = {
   /** Weight of 1 cup (prepped) and of 1 each, entered by the kitchen; used to turn recipe amounts into weight. */
   gramsPerCup?: number;
   gramsPerEach?: number;
+  /** Name of one "each" on the shopping list ("cloves"); with gramsPerEach, the list counts these. */
+  eachUnit?: string;
   /** Per 100 g, as bought ('raw') or as cooked ('cooked'). Absent = no data yet. */
   nutrition?: { kcal: number; protein: number; carbs: number; fat: number; basis: 'raw' | 'cooked'; source?: string };
 };

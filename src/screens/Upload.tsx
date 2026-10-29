@@ -5,7 +5,7 @@ import { parseTickets } from '../core/tickets';
 import { pdfTextItems } from '../lib/pdf';
 import { plan, type Catalog, type Plan, type RecipeCard, type ShoppingLine, type Unresolved } from '../core/planner';
 import { Card } from '../components/RecipeCard';
-import { lbOz } from '../core/measure';
+import { buyAmount, lbOz } from '../core/measure';
 import { normalizeName } from '../core/hotplate';
 
 /** The prep list is always worked from the uploaded file alone (kitchen 2026-10-29: no carrying over earlier uploads). */
@@ -54,11 +54,7 @@ function Section({ title, children }: { title: ReactNode; children: ReactNode })
 const fmtOz = (oz: number) => `${Number.isInteger(oz) ? oz : oz.toFixed(1)} oz`;
 
 /** Counted items read as a count ("7 eggs", "3 packs"); everything else as weight. */
-const amount = (l: ShoppingLine) => (l.packages ? `${l.packages.count} ${one(l.packages.count, l.packages.unit)}` : lbOz(l.oz, true));
 
-/** "1 bunch", "1 bag (10 oz)", "2 bunches": units are stored plural. */
-const one = (count: number, unit: string) =>
-  count !== 1 ? unit : unit.replace(/^\S+/, w => w.replace(/(ch|sh|ss|x)es$/, '$1').replace(/([^s])s$/, '$1'));
 
 
 const dates = (orders: OrderLine[]) =>
@@ -90,6 +86,8 @@ export function Upload({ catalog }: { catalog: Catalog }) {
     return loaded.raw.filter(o => !excluded.has(itemKey(o.item)));
   }, [loaded, excluded]);
   const result: Plan | undefined = useMemo(() => (loaded ? plan(orders, catalog) : undefined), [loaded, orders, catalog]);
+  const ingredientById = useMemo(() => new Map(catalog.ingredients.map(i => [i.id, i])), [catalog]);
+  const amount = (l: ShoppingLine) => buyAmount(l.oz, ingredientById.get(l.ingredientId));
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [done, setDone] = useState<Set<string>>(new Set());

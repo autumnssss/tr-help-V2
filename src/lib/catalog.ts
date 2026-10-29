@@ -5,7 +5,7 @@ import { normalizeName } from '../core/hotplate';
 import type { Catalog, CookingMethod, MenuItem, Pack, Size } from '../core/planner';
 
 export type CatalogRows = {
-  ingredients: { id: string; name: string; yield: number; yield_source: 'usda' | 'kitchen' | 'estimate'; buffer: number; purchase_unit: string | null; purchase_oz: number | null; staple?: boolean; category?: string | null; grams_per_cup?: number | null; grams_per_each?: number | null; nutrition?: { kcal: number; protein: number; carbs: number; fat: number; basis: 'raw' | 'cooked'; source?: string } | null }[];
+  ingredients: { id: string; name: string; yield: number; yield_source: 'usda' | 'kitchen' | 'estimate'; buffer: number; purchase_unit: string | null; purchase_oz: number | null; staple?: boolean; category?: string | null; grams_per_cup?: number | null; grams_per_each?: number | null; each_unit?: string | null; nutrition?: { kcal: number; protein: number; carbs: number; fat: number; basis: 'raw' | 'cooked'; source?: string } | null }[];
   kitchen_recipes: { id: string; name: string; method: CookingMethod | null; finished_oz: number | null; oz_per_piece?: number | null; prep_group?: string | null; on_prep_sheet?: boolean; steps?: string | null; notes?: string | null; finished_oz_measured?: boolean; yield_count?: number | null; yield_unit?: string | null; archived?: boolean }[];
   recipe_lines: { recipe_id: string; ingredient_id: string | null; sub_recipe_id: string | null; raw_name: string; oz: number | null; position: number; amount?: number | null; unit?: string | null; note?: string | null }[];
   container_types: { id: string; name: string; cost_only: boolean }[];
@@ -74,6 +74,7 @@ export function rowsToCatalog(rows: CatalogRows): Catalog {
       ...(i.category ? { category: i.category } : {}),
       ...(i.grams_per_cup ? { gramsPerCup: Number(i.grams_per_cup) } : {}),
       ...(i.grams_per_each ? { gramsPerEach: Number(i.grams_per_each) } : {}),
+      ...(i.each_unit ? { eachUnit: i.each_unit } : {}),
       ...(i.nutrition ? { nutrition: i.nutrition } : {}),
     })),
     // Archived recipes (no longer made) don't show or plan.

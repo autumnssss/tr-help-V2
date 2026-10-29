@@ -95,7 +95,11 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
   rice, broths) gets no line of its own; its steps show inside each dish's recipe card, scaled to that dish. A base
   that's also plated on its own keeps its line.
 - **Weights read as pounds and ounces** at 16 oz and up ("1 lb 4 oz", never "1.25 lb"); under a pound in ounces.
-  The shopping list rounds up to the whole ounce. Small produce is bought by the unit (bunch, head, package).
+  Small produce is bought by the unit (bunch, head, package).
+- **Shopping list shows what's needed, not whole packages** (2026-10-29: there may be some on the shelf, and an ounce
+  short is fine): pasta, rice, grains and loose items in lb/oz; packages as the part needed ("3.25 cans", "½ bag");
+  liquids by the quart/gallon in cups ("1 cup (¼ quart)"); garlic in cloves ("6 cloves (⅓ head)"). Things bought one
+  at a time (eggs, limes, a chicken) round up to whole ones.
 - **No separate Totals section**: each prep line shows what was sold ("4 oz × 21 + Family 16 oz × 6"); the weight on
   the line is what's still to prep.
 - **The prep list works only from the uploaded file** (2026-10-29). No orders are carried over or taken out from earlier uploads.

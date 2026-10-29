@@ -1,4 +1,4 @@
-import { lineOz, missingWeight, unitKind, lbOz } from '../src/core/measure';
+import { lineOz, missingWeight, unitKind, lbOz, buyAmount } from '../src/core/measure';
 
 describe('recipe line weights', () => {
   it('converts weights exactly', () => {
@@ -45,5 +45,33 @@ describe('weights as the kitchen reads them', () => {
     expect(lbOz(30.08, true)).toBe('1 lb 15 oz');
     expect(lbOz(31.6, true)).toBe('2 lb');
     expect(lbOz(32, true)).toBe('2 lb');
+  });
+});
+
+describe('what the shopping list says to buy', () => {
+  it('pasta, grains and loose items by weight', () => {
+    expect(buyAmount(8, undefined)).toBe('8.0 oz');
+    expect(buyAmount(20, {})).toBe('1 lb 4 oz');
+  });
+  it('packages as the part needed, not rounded up', () => {
+    expect(buyAmount(48.75, { purchase: { unit: 'cans', oz: 15 } })).toBe('3.25 cans');
+    expect(buyAmount(65, { purchase: { unit: 'cans', oz: 15 } })).toBe('4.33 cans');
+    expect(buyAmount(5, { purchase: { unit: 'bags (10 oz)', oz: 10 } })).toBe('½ bag (10 oz)');
+    expect(buyAmount(30, { purchase: { unit: 'cans', oz: 15 } })).toBe('2 cans');
+  });
+  it('liquids in cups with the part of a quart', () => {
+    expect(buyAmount(8.1, { purchase: { unit: 'quarts', oz: 33.581 } })).toBe('1 cup (¼ quart)');
+    expect(buyAmount(25, { purchase: { unit: 'quarts', oz: 33.581 } })).toBe('3 cups (¾ quart)');
+  });
+  it('garlic in cloves, with the part of a head', () => {
+    expect(buyAmount(0.635, { purchase: { unit: 'heads', oz: 2 }, gramsPerEach: 3, eachUnit: 'cloves' })).toBe('6 cloves (⅓ head)');
+  });
+});
+
+describe('things bought one at a time', () => {
+  it('rounds eggs, limes and chickens up to whole ones; spoon-sized packages stay as they are', () => {
+    expect(buyAmount(6.64, { purchase: { unit: 'eggs', oz: 2 } })).toBe('4 eggs');
+    expect(buyAmount(32.4 * 0.99, { purchase: { unit: 'chickens', oz: 72 } })).toBe('1 chicken');
+    expect(buyAmount(1.56, { purchase: { unit: 'tsp', oz: 0.21 } })).toBe('7.43 tsp');
   });
 });

@@ -73,3 +73,53 @@ export function lbOz(oz: number, roundUp = false): string {
   const lb = Math.floor(whole / 16), rest = whole % 16;
   return rest ? `${lb} lb ${rest} oz` : `${lb} lb`;
 }
+
+const FRACTIONS: [number, string][] = [[1 / 4, '¼'], [1 / 3, '⅓'], [1 / 2, '½'], [2 / 3, '⅔'], [3 / 4, '¾']];
+
+/** Part of a package: "¼", "⅓" under 1 when close to one of those, else up to 2 decimals ("3.25", "0.12", "2"). */
+export function packageCount(n: number): string {
+  if (n < 1) {
+    const f = FRACTIONS.find(([v]) => Math.abs(n - v) < 0.03);
+    if (f) return f[1];
+  }
+  return String(Math.round(n * 100) / 100);
+}
+
+/** "1 bunch", "1 bag (10 oz)", "2 bunches", "¼ quart": units are stored plural; 1 or less reads singular. */
+export function unitLabel(n: number, unit: string): string {
+  return n > 1 ? unit : unit.replace(/^\S+/, w => w.replace(/(ch|sh|ss|x)es$/, '$1').replace(/([^s])s$/, '$1'));
+}
+
+/** Cups to the nearest quarter, as kitchen fractions: 1, 1½, ¾. */
+function cups(n: number): string {
+  const q = Math.max(1, Math.round(n * 4));
+  const whole = Math.floor(q / 4), part = ['', '¼', '½', '¾'][q % 4]!;
+  return `${whole || ''}${part}` + (q <= 4 ? ' cup' : ' cups');
+}
+
+type BuyIngredient = Pick<MeasureIngredient, 'purchase' | 'gramsPerEach'> & { eachUnit?: string };
+
+/**
+ * What the shopping list says to buy (kitchen 2026-10-29): the amount needed, never rounded up to whole packages
+ * (there may be some on the shelf, and an ounce short is fine).
+ *  - by weight: "1 lb 4 oz" (pasta, rice, grains, meat, produce bought loose)
+ *  - liquids bought by the quart/gallon: "1 cup (¼ quart)"
+ *  - counted by the each: "6 cloves (⅓ head)"
+ *  - packages: "3.25 cans", "½ bag (10 oz)"
+ */
+export function buyAmount(oz: number, ing: BuyIngredient | undefined): string {
+  const p = ing?.purchase;
+  // Things bought one at a time (eggs, limes, a chicken) can't be bought in part: whole numbers, rounded up.
+  const whole = p && !/\(/.test(p.unit) && /^(eggs?|limes?|lemons?|peppers?|onions?|chickens?|potato(es)?|packs?)$/i.test(p.unit.trim());
+  const share = p ? (whole ? Math.ceil(oz / p.oz - 0.02) : oz / p.oz) : 0;
+  const pkg = p ? `${packageCount(share)} ${unitLabel(share, p.unit)}` : '';
+  if (ing?.eachUnit && ing.gramsPerEach) {
+    const each = Math.max(1, Math.round((oz * GRAMS_PER_OZ) / ing.gramsPerEach));
+    return `${each} ${unitLabel(each, ing.eachUnit)}` + (pkg ? ` (${pkg})` : '');
+  }
+  if (!p) return lbOz(oz, true);
+  const u = clean(p.unit.split(/\s|\(/)[0]!);
+  const perPackage = /^(quart|gallon|pint)/.test(u) ? VOLUME_CUPS[u] ?? VOLUME_CUPS[singular(u)] : undefined; // liquids by the quart/gallon
+  if (perPackage) return `${cups(share * perPackage)} (${pkg})`;
+  return pkg;
+}
