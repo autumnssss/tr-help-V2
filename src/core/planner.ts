@@ -496,7 +496,8 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
 
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
   const aisle = (c: string) => { const i = STORE_ORDER.indexOf(c); return i < 0 ? STORE_ORDER.length : i; };
-  const allBuys = [...buyOz].map(([id, oz]) => buyLine(ingredients.get(id)!, oz))
+  // Tap water is never bought or stocked (kitchen 2026-10-29): it stays in recipes, off both lists.
+  const allBuys = [...buyOz].filter(([id]) => ingredients.get(id)!.category !== 'Water').map(([id, oz]) => buyLine(ingredients.get(id)!, oz))
     .sort((a, b) => aisle(a.category) - aisle(b.category) || a.category.localeCompare(b.category) || byName(a, b));
   const shoppingList = allBuys.filter(l => !ingredients.get(l.ingredientId)!.staple);
   const pantry = allBuys.filter(l => ingredients.get(l.ingredientId)!.staple);

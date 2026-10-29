@@ -37,3 +37,13 @@ export function subtractOrders(current: OrderLine[], previous: OrderLine[]): Ord
     return quantity > 0 ? [{ ...o, quantity, remaining: Math.min(o.remaining, quantity) }] : [];
   });
 }
+
+/**
+ * Whether an earlier upload is last week's list (take it out) or this week's list downloaded again (keep
+ * everything). Hotplate gives carried-over weeks the same window date, so the upload date decides: a list
+ * uploaded 4+ days earlier is a different week. Kitchen 2026-10-29: re-uploading an updated list for the same
+ * week was taking out every order already in the first download.
+ */
+export function isEarlierWeek(previousUploadedAt: string, now: Date): boolean {
+  return now.getTime() - new Date(previousUploadedAt).getTime() >= 4 * 24 * 60 * 60 * 1000;
+}

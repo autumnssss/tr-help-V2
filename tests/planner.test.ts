@@ -237,3 +237,19 @@ describe('size names', () => {
     expect(sizeKey('8 oz', sizes)).toBeUndefined();
   });
 });
+
+describe('water', () => {
+  it('stays in the recipe but is never on the shopping list or pantry', () => {
+    const c: Catalog = {
+      ingredients: [
+        { id: 'water', name: 'Water', yield: 1, yieldSource: 'kitchen', staple: true, category: 'Water' },
+        { id: 'rice', name: 'Rice', yield: 3, yieldSource: 'estimate' },
+      ],
+      recipes: [{ id: 'r', name: 'Rice', method: 'boil', lines: [{ ingredientId: 'rice', oz: 8 }, { ingredientId: 'water', oz: 16 }] }],
+      menu: [{ id: 'm', titles: ['Rice Bowl'], kind: 'meal', sizes: { regular: { portions: [{ recipeId: 'r', oz: 4 }], packaging: [], labels: 1 } } }],
+      sides: {},
+    };
+    const p = plan([order('Rice Bowl', 10)], c);
+    expect([...p.shoppingList, ...p.pantry].map(l => l.name)).toEqual(['Rice']);
+  });
+});

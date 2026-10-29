@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { parseHotplateCsv, type OrderLine } from '../src/core/hotplate';
-import { containsOrders, sameOrders, subtractOrders } from '../src/core/weeks';
+import { containsOrders, isEarlierWeek, sameOrders, subtractOrders } from '../src/core/weeks';
 
 const o = (item: string, quantity: number, variation = '', remaining = quantity): OrderLine =>
   ({ windowStart: '2026-10-09 00:00:00', item, variation, quantity, remaining });
@@ -38,5 +38,13 @@ describe('taking out a previous upload', () => {
     expect(qty('Shrimp & Grits with Brussels sprouts', '6 OZ')).toBe(1);
     expect(qty('Smoked Beef by the pound')).toBe(1);
     expect(qty('Chicken veggie pasta')).toBe(0);
+  });
+});
+
+describe('same week or last week', () => {
+  const now = new Date('2026-10-29T13:00:00Z');
+  it('an upload from earlier this week is the same week; 4+ days back is last week', () => {
+    expect(isEarlierWeek('2026-10-28T20:00:00Z', now)).toBe(false);
+    expect(isEarlierWeek('2026-10-22T15:00:00Z', now)).toBe(true);
   });
 });

@@ -6,7 +6,7 @@ import { pdfTextItems } from '../lib/pdf';
 import { plan, type Catalog, type Plan, type RecipeCard, type ShoppingLine, type Unresolved } from '../core/planner';
 import { Card } from '../components/RecipeCard';
 import { lbOz } from '../core/measure';
-import { containsOrders, sameOrders, subtractOrders } from '../core/weeks';
+import { containsOrders, isEarlierWeek, sameOrders, subtractOrders } from '../core/weeks';
 import { normalizeName } from '../core/hotplate';
 
 /** A saved upload, so the next file can take out orders it already counted. */
@@ -155,7 +155,7 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
       const previous = recent.find(u => !sameOrders(u.lines, raw) && containsOrders(raw, u.lines));
       if (history && !(recent[0] && sameOrders(recent[0].lines, raw))) await history.save(file.name, raw).catch(() => undefined);
       setLoaded({ fileName: file.name, raw, ...(previous ? { previous } : {}) });
-      setSubtract(true);
+      setSubtract(previous ? isEarlierWeek(previous.uploadedAt, new Date()) : false);
       setExcluded(new Set());
       setDone(loadDone(file.name));
     } catch (e) {
@@ -216,14 +216,17 @@ export function Upload({ catalog, history }: { catalog: Catalog; history?: Uploa
           </section>
 
           {loaded.previous && (
-            <section className="card no-print">
+            <section className={`card no-print${subtract ? ' warn' : ''}`}>
               <label className="toggle">
                 <input type="checkbox" checked={subtract} onChange={e => setSubtract(e.target.checked)} />
                 <span>
                   <strong>Leave out last upload's orders</strong>
                   <div className="raw">
                     This file still has everything from “{loaded.previous.fileName}”
-                    ({new Date(loaded.previous.uploadedAt).toLocaleDateString()}). Hotplate keeps earlier weeks in the prep list.
+                    ({new Date(loaded.previous.uploadedAt).toLocaleDateString()}).{' '}
+                    {subtract
+                      ? 'Only orders added since then are counted. Untick if this is the same week downloaded again.'
+                      : 'Everything in this file is counted. Tick only if that upload was last week (Hotplate keeps earlier weeks in).'}
                   </div>
                 </span>
               </label>
