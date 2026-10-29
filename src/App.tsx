@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { Catalog } from './core/planner';
 import { loadCatalog } from './lib/catalog';
-import { uploadHistory } from './lib/history';
 import { configError, db, myKitchen, type Padding } from './lib/supabase';
 import { Login } from './screens/Login';
 import { Nutrition } from './screens/Nutrition';
@@ -74,7 +73,7 @@ export function App() {
       {kitchen.status === 'ready' && (
         <>
           {/* Both stay mounted so switching tabs keeps the uploaded file. */}
-          <div hidden={tab !== 'prep'}><Upload catalog={kitchen.catalog} history={uploadHistory(db, kitchen.id)} /></div>
+          <div hidden={tab !== 'prep'}><Upload catalog={kitchen.catalog} /></div>
           <div hidden={tab !== 'recipes'}>
             <Recipes catalog={kitchen.catalog} db={db} by={session.user.email ?? undefined} onChanged={() => setReloads(n => n + 1)} />
           </div>

@@ -98,6 +98,7 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
   The shopping list rounds up to the whole ounce. Small produce is bought by the unit (bunch, head, package).
 - **No separate Totals section**: each prep line shows what was sold ("4 oz × 21 + Family 16 oz × 6"); the weight on
   the line is what's still to prep.
+- **The prep list works only from the uploaded file** (2026-10-29). No orders are carried over or taken out from earlier uploads.
 - **Each device picks which report sections it shows** (Show on this page); Needs setup always shows.
 - **No "small items" list.** Every line stays in its station, however small (2.5 oz of cauliflower is one client's plate).
 - **Boil:** everything boiled is under **Salted water**; rice is its own pot. The app does not order the boil.
