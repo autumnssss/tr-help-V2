@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { parseHotplateCsv, type OrderLine } from '../src/core/hotplate';
-import { casseroleMeal, plan, standardMeal, type Catalog, type Ingredient, type Recipe } from '../src/core/planner';
+import { casseroleMeal, plan, sizeKey, standardMeal, type Catalog, type Ingredient, type Recipe, type Size } from '../src/core/planner';
 
 const order = (item: string, quantity: number, variation = '', remaining = quantity): OrderLine =>
   ({ windowStart: '2026-10-13 00:00:00', item, variation, quantity, remaining });
@@ -222,5 +222,18 @@ describe('plan: per-component totals', () => {
   it('counts side-plate 2x picks as separate side portions', () => {
     const p = plan([order('Garden Vegetable and Sides', 1, 'Glazed Carrots • 2x Brussels Sprouts')], base);
     expect(p.components.find(c => c.recipeId === 'brussels sprouts')?.portions).toEqual([{ label: '4 oz', oz: 4, count: 2 }]);
+  });
+});
+
+describe('size names', () => {
+  const sizes = { regular: {}, '32 ounces': {}, '6 oz': {}, family: {} } as unknown as Record<string, Size>;
+  it('matches oz and ounces either way, and a 6 typed with a zero', () => {
+    expect(sizeKey('32 oz ', sizes)).toBe('32 ounces');
+    expect(sizeKey('6 OZ', sizes)).toBe('6 oz');
+    expect(sizeKey('6 0Z', sizes)).toBe('6 oz');
+    expect(sizeKey('6 ounces', sizes)).toBe('6 oz');
+    expect(sizeKey('Family Size feed 3-5', sizes)).toBe('family');
+    expect(sizeKey('', sizes)).toBe('regular');
+    expect(sizeKey('8 oz', sizes)).toBeUndefined();
   });
 });

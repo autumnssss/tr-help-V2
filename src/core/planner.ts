@@ -335,10 +335,15 @@ export function dishName(title: string): string {
 }
 
 /** Which of a meal's sizes a Hotplate variation is ('regular', 'family', '6 oz', a flavor…), if any. */
+/** "32 ounces", "32 oz.", "32oz", "6 0Z" (typed with a zero) → "32 oz" / "6 oz". */
+const ozWords = (s: string) => s.replace(/^(\d+(?:\.\d+)?)\s*(?:ounces?|oz\.?|0z)$/, '$1 oz');
+
 export function sizeKey(variation: string, sizes: Record<string, Size>): string | undefined {
-  const v = normalizeName(variation).replace(/^(\d+(?:\.\d+)?)\s*0z$/, '$1 oz'); // "6 0Z" typed with a zero
+  const v = ozWords(normalizeName(variation));
   if (v === '') return sizes.regular ? 'regular' : undefined;
   if (sizes[v]) return v;
+  const same = Object.keys(sizes).find(k => ozWords(k) === v); // menu says "32 ounces", Hotplate "32 oz"
+  if (same) return same;
   if (v.startsWith('family') && sizes.family) return 'family';
   return undefined;
 }
