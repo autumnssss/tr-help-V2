@@ -97,7 +97,7 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 - **Weights read as pounds and ounces** at 16 oz and up ("1 lb 4 oz", never "1.25 lb"); under a pound in ounces.
   Small produce is bought by the unit (bunch, head, package).
 - **Shopping list shows what's needed, not whole packages** (2026-10-29: there may be some on the shelf, and an ounce
-  short is fine): pasta, rice, grains and loose items in lb/oz; packages as the part needed ("3.25 cans", "½ bag");
+  short is fine): pasta, rice, grains, dry beans, nuts (all bought in bulk) and loose items in lb/oz; packages as the part needed ("3.25 cans", "½ bag");
   liquids by the quart/gallon in cups ("1 cup (¼ quart)"); garlic in cloves ("6 cloves (⅓ head)"). Things bought one
   at a time (eggs, limes, a chicken) round up to whole ones.
 - **No separate Totals section**: each prep line shows what was sold ("4 oz × 21 + Family 16 oz × 6"); the weight on
