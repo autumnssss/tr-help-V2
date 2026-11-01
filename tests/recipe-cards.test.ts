@@ -1,6 +1,6 @@
 import type { OrderLine } from '../src/core/hotplate';
 import { batchIsEstimate, batchOz, defaultServingOz, plan, recipeCard, type Catalog } from '../src/core/planner';
-import { formatAmount, scaledName, toEighths } from '../src/core/units';
+import { formatAmount, cardName, toEighths } from '../src/core/units';
 
 const order = (item: string, quantity: number, remaining = quantity): OrderLine =>
   ({ windowStart: '2026-10-20 00:00:00', item, variation: '', quantity, remaining });
@@ -62,11 +62,10 @@ describe('formatAmount', () => {
     expect(formatAmount(0.75, 'cup')).toBe('3/4 cup');
   });
 
-  it('drops the original recipe\'s bracketed amounts once a card is scaled', () => {
-    expect(scaledName('celery, sliced (2 stalks)', 1.685)).toBe('celery, sliced');
-    expect(scaledName('carrots, sliced (2–3)', 1.685)).toBe('carrots, sliced');
-    expect(scaledName('celery, sliced (2 stalks)', 1)).toBe('celery, sliced (2 stalks)');
-    expect(scaledName('cumin (optional)', 2)).toBe('cumin (optional)');
+  it('never shows the original recipe\'s bracketed amounts; they are only right at one size', () => {
+    expect(cardName('celery, sliced (2 stalks)')).toBe('celery, sliced');
+    expect(cardName('carrots, sliced (2–3)')).toBe('carrots, sliced');
+    expect(cardName('cumin (optional)')).toBe('cumin (optional)');
   });
 });
 

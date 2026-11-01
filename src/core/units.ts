@@ -36,11 +36,10 @@ export function formatOz(oz: number): string {
 }
 
 /**
- * A line's name on a scaled card. The original recipe's hints in brackets ("celery, sliced (2 stalks)",
- * "garlic (1 tbsp)") describe the unscaled amount, so they're dropped once the recipe is scaled; the scaled amount
- * in front is what to use.
+ * A line's name on a recipe card. Bracketed amounts copied from the original recipe ("celery, sliced (2 stalks)",
+ * "garlic (1 tbsp)") are only right at one size, so they're never shown (kitchen 2026-11-01: no notes unless they're
+ * always correct); the amount in front is what to use. Brackets without a number ("(optional)") stay.
  */
-export function scaledName(name: string, batches: number): string {
-  if (Math.abs(batches - 1) < 1e-9) return name;
+export function cardName(name: string): string {
   return name.replace(/\s*\([^)]*\d[^)]*\)/g, '').trim();
 }
