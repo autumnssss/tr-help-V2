@@ -1,6 +1,6 @@
 import type { OrderLine } from '../src/core/hotplate';
 import { batchIsEstimate, batchOz, defaultServingOz, plan, recipeCard, type Catalog } from '../src/core/planner';
-import { formatAmount, toEighths } from '../src/core/units';
+import { formatAmount, scaledName, toEighths } from '../src/core/units';
 
 const order = (item: string, quantity: number, remaining = quantity): OrderLine =>
   ({ windowStart: '2026-10-20 00:00:00', item, variation: '', quantity, remaining });
@@ -44,7 +44,7 @@ describe('scaled recipe cards', () => {
     // The soup's share: 9 cups of broth → 9 batches of 1 cup water + 1 tsp base.
     const broth = p.recipeCards.soup!.lines[0]!.sub!;
     expect(broth.batches).toBe(9);
-    expect(broth.lines.map(l => formatAmount(l.amount!, l.unit))).toEqual(['9 cup', '9 tsp']);
+    expect(broth.lines.map(l => formatAmount(l.amount!, l.unit))).toEqual(['9 cups', '9 tsp']);
   });
 });
 
@@ -57,6 +57,16 @@ describe('formatAmount', () => {
     expect(formatAmount(4.856, 'lbs')).toBe('4.86 lbs');
     expect(formatAmount(5.75, 'large')).toBe('5.8 large');
     expect(formatAmount(3, '')).toBe('3');
+    expect(formatAmount(1.685, 'cup')).toBe('1 5/8 cups');
+    expect(formatAmount(1, 'cups')).toBe('1 cup');
+    expect(formatAmount(0.75, 'cup')).toBe('3/4 cup');
+  });
+
+  it('drops the original recipe\'s bracketed amounts once a card is scaled', () => {
+    expect(scaledName('celery, sliced (2 stalks)', 1.685)).toBe('celery, sliced');
+    expect(scaledName('carrots, sliced (2–3)', 1.685)).toBe('carrots, sliced');
+    expect(scaledName('celery, sliced (2 stalks)', 1)).toBe('celery, sliced (2 stalks)');
+    expect(scaledName('cumin (optional)', 2)).toBe('cumin (optional)');
   });
 });
 

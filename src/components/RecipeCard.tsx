@@ -1,5 +1,5 @@
 import type { RecipeCard } from '../core/planner';
-import { formatAmount, formatOz } from '../core/units';
+import { formatAmount, formatOz, scaledName } from '../core/units';
 
 /** A recipe scaled to this order. Mixed-in sub-recipes (broth) open inside it. */
 export function Card({ card, cards }: { card: RecipeCard; cards?: Record<string, RecipeCard> }) {
@@ -9,7 +9,7 @@ export function Card({ card, cards }: { card: RecipeCard; cards?: Record<string,
       <ul>
         {card.lines.map((l, i) => (
           <li key={i}>
-            <strong>{l.amount != null ? formatAmount(l.amount, l.unit) : l.oz ? formatOz(l.oz) : '—'}</strong> {l.name}
+            <strong>{l.amount != null ? formatAmount(l.amount, l.unit) : l.oz ? formatOz(l.oz) : '—'}</strong> {scaledName(l.name, card.batches)}
             {l.sub && <Card card={l.sub} cards={cards} />}
           </li>
         ))}
