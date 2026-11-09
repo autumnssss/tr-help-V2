@@ -347,6 +347,7 @@ export function sizeKey(variation: string, sizes: Record<string, Size>): string 
   const same = Object.keys(sizes).find(k => ozWords(k) === v); // menu says "32 ounces", Hotplate "32 oz"
   if (same) return same;
   if (v.startsWith('family') && sizes.family) return 'family';
+  if (v.startsWith('double')) return Object.keys(sizes).find(k => ozWords(k) === '8 oz'); // "Double" = the 8 oz plate
   return undefined;
 }
 

@@ -235,6 +235,10 @@ describe('size names', () => {
     expect(sizeKey('Family Size feed 3-5', sizes)).toBe('family');
     expect(sizeKey('', sizes)).toBe('regular');
     expect(sizeKey('8 oz', sizes)).toBeUndefined();
+    const with8 = { ...sizes, '8 oz': {} } as unknown as Record<string, Size>;
+    expect(sizeKey('Double', with8)).toBe('8 oz');
+    expect(sizeKey('DOUBLE PROTEIN', with8)).toBe('8 oz');
+    expect(sizeKey('Double', sizes)).toBeUndefined();
   });
 });
 

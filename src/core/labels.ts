@@ -22,10 +22,11 @@ const BASE_COLUMNS = ['Reg', '6 oz', '8 oz'];
 /** Labels for one Family order when the menu doesn't say otherwise. */
 export const FAMILY_LABELS = 3;
 
-/** The size column from the ticket's own wording: "6 OZ", "6 0z", "8 ounces", "Family Size feed 3-5"; anything else is Reg. */
+/** The size column from the ticket's own wording: "6 OZ", "6 0z", "8 ounces", "Double" (= 8 oz), "Family Size feed 3-5"; anything else is Reg. */
 export function sizeColumn(variation: string): string {
   const v = normalizeName(variation);
   if (v.startsWith('family')) return 'Family';
+  if (v.startsWith('double')) return '8 oz'; // "Double" is the same plate as 8 oz (kitchen 2026-11-09)
   const oz = v.match(/^(\d+(?:\.\d+)?)\s*(?:oz\.?|ounces?|0z)$/);
   return oz ? `${oz[1]} oz` : 'Reg'; // flavors, sides and other options are one regular label
 }

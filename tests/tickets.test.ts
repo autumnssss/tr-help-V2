@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { parseTickets, type TextItem } from '../src/core/tickets';
-import { labelsByDestination } from '../src/core/labels';
+import { labelsByDestination, sizeColumn } from '../src/core/labels';
 import type { Catalog } from '../src/core/planner';
 
 // Hotplate ticket PDF for Tue Oct 27 (12 orders) as text items, customer details replaced.
@@ -94,5 +94,15 @@ describe('labels by destination', () => {
     expect(bare.meals.find(m => m.title === 'Chicken Marsala Pasta with Broccoli')?.total).toBe(20);
     expect(bare.meals.every(m => !m.onMenu)).toBe(true);
     expect(bare.meals.find(m => m.title === 'Yummy COOKIES!!')?.total).toBe(2);
+  });
+});
+
+describe('size from the ticket wording', () => {
+  it('reads Double as the 8 oz plate', () => {
+    expect(sizeColumn('Double')).toBe('8 oz');
+    expect(sizeColumn('DOUBLE')).toBe('8 oz');
+    expect(sizeColumn('8 OZ')).toBe('8 oz');
+    expect(sizeColumn('Family Size feed 3-5')).toBe('Family');
+    expect(sizeColumn('Roasted Garlic')).toBe('Reg');
   });
 });
