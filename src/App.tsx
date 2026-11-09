@@ -5,6 +5,7 @@ import { loadCatalog } from './lib/catalog';
 import { configError, db, myKitchen, type Padding } from './lib/supabase';
 import { Login } from './screens/Login';
 import { Nutrition } from './screens/Nutrition';
+import { Labels } from './screens/Labels';
 import { Recipes } from './screens/Recipes';
 import { Upload } from './screens/Upload';
 
@@ -17,7 +18,7 @@ type KitchenState =
 export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [kitchen, setKitchen] = useState<KitchenState>({ status: 'loading' });
-  const [tab, setTab] = useState<'prep' | 'recipes' | 'nutrition'>('prep');
+  const [tab, setTab] = useState<'prep' | 'labels' | 'recipes' | 'nutrition'>('prep');
   const [reloads, setReloads] = useState(0); // bump to reload the catalog after an edit
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export function App() {
         {kitchen.status === 'ready' && (
           <nav className="tabs">
             <button className={tab === 'prep' ? 'active' : ''} onClick={() => setTab('prep')}>Prep list</button>
+            <button className={tab === 'labels' ? 'active' : ''} onClick={() => setTab('labels')}>Labels</button>
             <button className={tab === 'recipes' ? 'active' : ''} onClick={() => setTab('recipes')}>Recipes</button>
             <button className={tab === 'nutrition' ? 'active' : ''} onClick={() => setTab('nutrition')}>Nutrition</button>
           </nav>
@@ -74,6 +76,7 @@ export function App() {
         <>
           {/* Both stay mounted so switching tabs keeps the uploaded file. */}
           <div hidden={tab !== 'prep'}><Upload catalog={kitchen.catalog} /></div>
+          <div hidden={tab !== 'labels'}><Labels catalog={kitchen.catalog} /></div>
           <div hidden={tab !== 'recipes'}>
             <Recipes catalog={kitchen.catalog} db={db} by={session.user.email ?? undefined} onChanged={() => setReloads(n => n + 1)} />
           </div>

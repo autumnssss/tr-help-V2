@@ -64,11 +64,11 @@ describe('labels by destination', () => {
   const l = labelsByDestination(tickets, catalog);
   const cell = (title: string, dest: string) => l.meals.find(m => m.title === title)?.byDestination.find(d => d.destination === dest)?.counts;
 
-  it('splits each meal by destination and size; Family counts labels (3 per family order)', () => {
+  it('splits each meal by destination and size; sizes count orders, the total counts labels (3 per family order)', () => {
     expect(l.columns).toEqual(['Reg', '6 oz', '8 oz', 'Family']);
-    expect(cell('Chicken Marsala Pasta with Broccoli', 'Elevate')).toEqual({ Reg: 2, Family: 3 });
+    expect(cell('Chicken Marsala Pasta with Broccoli', 'Elevate')).toEqual({ Reg: 2, Family: 1 });
     expect(cell('Chicken Marsala Pasta with Broccoli', 'Bounce & Play')).toEqual({ Reg: 8, '6 oz': 1 }); // #343 2, #339 1 + 6 oz 1, #336 1, #334 4
-    expect(cell('Chicken Marsala Pasta with Broccoli', 'Deliveries')).toEqual({ Reg: 3, Family: 3 }); // #337 2, #333 1; #344 family
+    expect(cell('Chicken Marsala Pasta with Broccoli', 'Deliveries')).toEqual({ Reg: 3, Family: 1 }); // #337 2, #333 1; #344 family
     expect(l.meals.find(m => m.title === 'Chicken Marsala Pasta with Broccoli')?.total).toBe(20); // 16 orders, 2 of them family
   });
 
@@ -80,7 +80,19 @@ describe('labels by destination', () => {
     expect(l.meals.find(m => m.title === 'Yummy COOKIES!!')?.total).toBe(2);
   });
 
-  it('lists ticket lines the menu does not know instead of dropping them', () => {
-    expect(l.unmatched.map(u => u.item)).toContain('Fajita Combo Bowl Beef & Chicken');
+  it('counts items the menu does not know, from the ticket wording (Family = 3 labels)', () => {
+    const fajita = l.meals.find(m => m.title === 'Fajita Combo Bowl Beef & Chicken')!;
+    expect(fajita.onMenu).toBe(false);
+    const orders = { Reg: 0, '6 oz': 0, Family: 0 } as Record<string, number>;
+    for (const d of fajita.byDestination) for (const [k, v] of Object.entries(d.counts)) orders[k] = (orders[k] ?? 0) + v;
+    expect(orders).toEqual({ Reg: 3, '6 oz': 2, Family: 2 }); // same as the prep list for Oct 27
+    expect(fajita.total).toBe(3 + 2 + 2 * 3);
+  });
+
+  it('works with no menu at all', () => {
+    const bare = labelsByDestination(tickets);
+    expect(bare.meals.find(m => m.title === 'Chicken Marsala Pasta with Broccoli')?.total).toBe(20);
+    expect(bare.meals.every(m => !m.onMenu)).toBe(true);
+    expect(bare.meals.find(m => m.title === 'Yummy COOKIES!!')?.total).toBe(2);
   });
 });
