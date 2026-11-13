@@ -14,7 +14,7 @@ export type CatalogRows = {
   menu_sizes: { id: string; menu_item_id: string; variation: string; labels: number }[];
   size_portions: { size_id: string; recipe_id: string; oz: number | null; pieces?: number | null }[];
   size_packaging: { size_id: string; container_id: string; qty: number }[];
-  side_links: { side_name: string; recipe_id: string }[];
+  side_links: { side_name: string; recipe_id: string; pieces?: number | null }[];
 };
 
 const num = (n: number | string | null) => (n === null ? null : Number(n));
@@ -104,6 +104,7 @@ export function rowsToCatalog(rows: CatalogRows): Catalog {
     })),
     menu,
     sides: Object.fromEntries(rows.side_links.map(s => [s.side_name, s.recipe_id])),
+    sidePieces: Object.fromEntries(rows.side_links.filter(s => s.pieces).map(s => [s.side_name, Number(s.pieces)])),
   };
 }
 

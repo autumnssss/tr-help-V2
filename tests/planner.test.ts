@@ -257,3 +257,25 @@ describe('water', () => {
     expect([...p.shoppingList, ...p.pantry].map(l => l.name)).toEqual(['Rice']);
   });
 });
+
+describe('sides sold by the piece', () => {
+  it('a side-plate pick of a by-the-piece side counts its pieces, not the plate side weight', () => {
+    const c: Catalog = {
+      ingredients: [{ id: 'ear', name: 'Corn on the cob', yield: 1, yieldSource: 'estimate', purchase: { unit: 'ears', oz: 7 } },
+        { id: 'bean', name: 'Green beans', yield: 1, yieldSource: 'estimate' }],
+      recipes: [
+        { id: 'corn', name: 'Corn Niblets', method: 'boil', finishedOz: 7, ozPerPiece: 1.75, lines: [{ ingredientId: 'ear', oz: 7 }] },
+        { id: 'beans', name: 'Green Beans', method: 'boil', lines: [{ ingredientId: 'bean', oz: 16 }] },
+      ],
+      menu: [{ id: 'g', titles: ['Garden Vegetables and Sides'], kind: 'sidePlate', sideOz: 4, packaging: [], labels: 1 }],
+      sides: { 'Corn Niblets': 'corn', 'Green Beans': 'beans' },
+      sidePieces: { 'Corn Niblets': 3 },
+    };
+    const p = plan([order('Garden Vegetables and Sides', 4, 'Corn Niblets • Green Beans')], c);
+    const line = (id: string) => p.prepSheet.flatMap(g => g.items).find(i => i.recipeId === id)!;
+    expect(line('corn').pieces).toBe(12); // 4 plates × 3 pieces
+    expect(line('corn').finishedLb).toBe(1.31); // 12 × 1.75 oz = 21 oz
+    expect(line('beans').finishedLb).toBe(1); // 4 plates × 4 oz
+    expect(p.components.find(x => x.recipeId === 'corn')!.portions).toEqual([{ label: '3 pcs', oz: 5.25, count: 4 }]);
+  });
+});

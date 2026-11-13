@@ -108,6 +108,8 @@ Columns: `Window Start, Window End, Item Title, Variation, Description, Quantity
 - **Labels tab** (2026-11-09): drop the ticket PDF on its own (no prep list needed). Every ticket line is counted,
   on the app's menu or not. Size columns (Reg / 6 oz / 8 oz, which "Double" also counts as / Family) count orders; the Labels column counts labels
   to print: a Family order takes the menu's label count, or 3 when the item isn't set up in the app.
+- **Sides sold by the piece** (2026-11-13): a side-plate pick of Corn Niblets counts 3 pieces, not the plate's side weight
+  (`side_links.pieces`).
 - **Each device picks which report sections it shows** (Show on this page); Needs setup always shows.
 - **No "small items" list.** Every line stays in its station, however small (2.5 oz of cauliflower is one client's plate).
 - **Boil:** everything boiled is under **Salted water**; rice is its own pot. The app does not order the boil.

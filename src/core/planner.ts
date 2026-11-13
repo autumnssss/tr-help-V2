@@ -130,6 +130,8 @@ export type Catalog = {
   menu: MenuItem[];
   /** Side names as they appear in side-plate variations → recipe id. */
   sides: Record<string, string>;
+  /** Sides sold by the piece: side name → pieces per pick (Corn Niblets → 3). Others take the plate's side weight. */
+  sidePieces?: Record<string, number>;
 };
 
 export type Unresolved =
@@ -357,6 +359,7 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
   const byTitle = new Map<string, MenuItem>();
   for (const m of catalog.menu) for (const t of m.titles) byTitle.set(normalizeName(t), m);
   const sides = new Map(Object.entries(catalog.sides).map(([k, v]) => [normalizeName(k), v]));
+  const sidePieces = new Map(Object.entries(catalog.sidePieces ?? {}).map(([k, v]) => [normalizeName(k), v]));
 
   const unresolved = new Map<string, Unresolved>();
   const flag = (u: Unresolved) => unresolved.set(JSON.stringify(u), u);
@@ -405,12 +408,15 @@ export function plan(orders: OrderLine[], catalog: Catalog): Plan {
         missing.forEach(p => flag({ kind: 'side', title: o.item, side: p.name }));
         continue;
       }
-      // Count each pick as its own side portion so "2x Broccoli" reads as 4 oz ×2.
-      portions = picks.flatMap(p =>
-        Array.from({ length: p.count }, () => ({ recipeId: sides.get(normalizeName(p.name))!, oz: item.sideOz })));
+      // Count each pick as its own side portion so "2x Broccoli" reads as 4 oz ×2 (or 3 pcs ×2 for a side by the piece).
+      portions = picks.flatMap(p => Array.from({ length: p.count }, (): Portion => {
+        const recipeId = sides.get(normalizeName(p.name))!;
+        const pieces = sidePieces.get(normalizeName(p.name));
+        return pieces ? { recipeId, pieces } : { recipeId, oz: item.sideOz };
+      }));
       packaging = item.packaging;
       labelCount = item.labels;
-      sizeLabel = p => `${p.oz} oz`;
+      sizeLabel = p => (p.pieces ? `${p.pieces} pcs` : `${p.oz} oz`);
     } else {
       const key = sizeKey(o.variation, item.sizes);
       if (!key) { flag({ kind: 'size', title: o.item, variation: o.variation }); continue; }
